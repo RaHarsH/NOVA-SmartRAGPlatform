@@ -33,6 +33,17 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# virtual environments
+backend/venv/
+backend/.venv/*
+
+# Ignore Python cache and compiled files
+backend/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/**/*.pyd
+backend/**/__pycache__/
+
 # vercel
 .vercel
 
