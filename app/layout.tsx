@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import { Toaster } from "@/components/ui/sonner";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -20,9 +21,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={{baseTheme: dark}}>
+    <ClerkProvider appearance={{ baseTheme: dark }}>
       <html lang="en">
-        <body className={`${manrope.variable} antialiased bg-black text-white`}>{children}</body>
+        <body className={`${manrope.variable} antialiased bg-black text-white`}>
+          {children}
+          <Toaster position="bottom-right" />
+        </body>
       </html>
     </ClerkProvider>
   );

@@ -1,10 +1,10 @@
+import PdfUploader from '@/components/PDFuploader'
 import React from 'react'
 
 const page = () => {
   return (
-    <div>
-      <h1>PDF Chat</h1>
-      upload your pdf here
+    <div className='w-full h-[90vh] flex flex-col items-center justify-center'>
+      <PdfUploader />
     </div>
   )
 }

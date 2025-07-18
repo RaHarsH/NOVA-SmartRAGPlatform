@@ -27,11 +27,12 @@ interface ChatItem {
 }
 
 interface SidebarProps {
-  className?: string;
+  isCollapsed: boolean;
+  setIsCollapsed: (c: boolean) => void;
 }
 
-export default function Sidebar({ className = "" }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
+  // const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeChat, setActiveChat] = useState<string | null>("chat-1");
 
   const { isSignedIn, user, isLoaded } = useUser();
@@ -176,7 +177,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         width: isCollapsed ? "4rem" : "16rem",
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className={`fixed left-0 top-0 h-screen bg-black/95 backdrop-blur-xl border-r border-white/10 z-40 flex flex-col ${className}`}
+      className={`fixed left-0 top-0 h-screen bg-black/95 backdrop-blur-xl border-r border-white/10 z-40 flex flex-col`}
     >
       {/* logo of the sidebar */}
       <div className="flex items-center justify-between p-4 border-b border-white/10 min-h-[4rem] flex-shrink-0">
