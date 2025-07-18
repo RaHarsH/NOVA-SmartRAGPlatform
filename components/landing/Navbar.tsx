@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "../ui/button";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 
 const Navbar = () => {
   return (
@@ -14,15 +15,20 @@ const Navbar = () => {
           </span>
         </Link>
         <div className="flex items-center space-x-4">
-          <Link
-            className="hidden text-sm hover:text-cyan-400 transition-colors sm:block"
-            href="/login"
-          >
-            Sign In
-          </Link>
-          <Button className="text-xs cursor-pointer bg-gradient-to-r from-blue-800 to-violet-800 text-white hover:from-blue-600 hover:to-violet-600 transition-all duration-300">
-            Get Started
-          </Button>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button className="bg-transparent border border-gray-500 cursor-pointer hover:bg-gray-200/10">
+                Login
+              </Button>
+            </SignInButton>
+          </SignedOut>
+
+          <SignedIn>
+            <UserButton />
+            <Button className="text-xs cursor-pointer bg-gradient-to-r from-blue-800 to-violet-800 text-white hover:from-blue-600 hover:to-violet-600 transition-all duration-300">
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+          </SignedIn>
         </div>
       </div>
     </header>

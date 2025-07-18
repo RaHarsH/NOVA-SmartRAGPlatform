@@ -29,10 +29,12 @@ const CTASection = () => {
           </ul>
           <Button
             size="lg"
-            className="mt-8 cursor-pointer bg-gradient-to-r from-cyan-400 to-violet-500 text-lg text-black hover:from-cyan-500 hover:to-violet-600 transition-all duration-300 shadow-lg hover:shadow-cyan-400/25 hover:scale-105"
+            className="mt-8 cursor-pointer bg-gradient-to-r from-gray-400 to-gray-200 font-semibold text-lg text-black hover:scale-105"
           >
             Start Free Trial
-            <ArrowRight className="ml-2 h-5 w-5" />
+            <div className="bg-black p-1 flex justify-center items-center rounded-full ml-2">
+              <ArrowRight className="text-white h-5 w-5" />
+            </div>
           </Button>
         </div>
       </div>

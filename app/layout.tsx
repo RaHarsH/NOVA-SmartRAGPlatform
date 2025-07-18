@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import {  Manrope } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -18,12 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${manrope.variable} antialiased`}
-      >
-        {children}
-      </body>
-    </html>
+    <ClerkProvider appearance={{baseTheme: dark}}>
+      <html lang="en">
+        <body className={`${manrope.variable} antialiased bg-black text-white`}>{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
