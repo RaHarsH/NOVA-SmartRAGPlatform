@@ -9,7 +9,6 @@ import {
   Database,
   MessageSquarePlus,
   History,
-  User,
   Settings,
   ChevronLeft,
   Trash2,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SignedIn, UserButton, useUser } from "@clerk/nextjs";
+import Link from "next/link";
 
 interface ChatItem {
   id: string;
@@ -33,7 +33,8 @@ interface SidebarProps {
 export default function Sidebar({ className = "" }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeChat, setActiveChat] = useState<string | null>("chat-1");
-  const { isSignedIn, user, isLoaded } = useUser()
+
+  const { isSignedIn, user, isLoaded } = useUser();
 
   const chatHistory: ChatItem[] = [
     {
@@ -104,9 +105,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       id: "pdf",
       name: "PDF",
       icon: FileText,
-      color: "text-cyan-400",
+      color: "text-blue-400",
       hoverColor: "hover:bg-cyan-400/10 hover:border-cyan-400/30",
       description: "Chat with PDF documents",
+      goTo: "pdf-chat",
     },
     {
       id: "csv",
@@ -115,14 +117,16 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       color: "text-violet-400",
       hoverColor: "hover:bg-violet-400/10 hover:border-violet-400/30",
       description: "Analyze CSV data",
+      goTo: "csv-chat",
     },
     {
       id: "web",
       name: "Web",
       icon: Globe,
-      color: "text-cyan-400",
+      color: "text-blue-400",
       hoverColor: "hover:bg-cyan-400/10 hover:border-cyan-400/30",
       description: "Scrape and analyze websites",
+      goTo: "web-chat",
     },
     {
       id: "multi",
@@ -131,6 +135,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       color: "text-violet-400",
       hoverColor: "hover:bg-violet-400/10 hover:border-violet-400/30",
       description: "Integrate multiple sources",
+      goTo: "multiple-sources-chat",
     },
   ];
 
@@ -152,11 +157,11 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   const getTypeColor = (type: ChatItem["type"]) => {
     switch (type) {
       case "pdf":
-        return "text-cyan-400";
+        return "text-blue-400";
       case "csv":
         return "text-violet-400";
       case "web":
-        return "text-cyan-400";
+        return "text-blue-400";
       case "multi":
         return "text-violet-400";
       default:
@@ -224,7 +229,6 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         )}
       </div>
 
-      {/* New Chat Features - Compact */}
       <div className={`p-3 flex-shrink-0 ${isCollapsed ? "px-2" : ""}`}>
         <AnimatePresence>
           {!isCollapsed && (
@@ -264,29 +268,34 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                     : feature.description
                 }
               >
-                <Icon
-                  className={`h-4 w-4 ${feature.color} group-hover:scale-110 transition-transform duration-200 flex-shrink-0`}
-                />
-                <AnimatePresence>
-                  {!isCollapsed && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="text-xs font-medium text-white truncate"
-                    >
-                      {feature.name}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <Link
+                  href={`/dashboard/chats/${feature.goTo}`}
+                  className="flex justify-center items-center space-x-4 w-full"
+                >
+                  <Icon
+                    className={`h-4 w-4 ${feature.color} group-hover:scale-110 transition-transform duration-200 flex-shrink-0`}
+                  />
+                  <AnimatePresence>
+                    {!isCollapsed && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-xs font-medium text-white truncate"
+                      >
+                        {feature.name}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Link>
               </motion.button>
             );
           })}
         </div>
       </div>
 
-      {/* Chat History - Takes most of the space */}
+      {/* Chat History */}
       <AnimatePresence>
         {!isCollapsed && (
           <motion.div
@@ -405,8 +414,12 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                 transition={{ duration: 0.2 }}
                 className="flex-1 text-left"
               >
-                <div className="text-sm font-medium text-white">{user?.fullName}</div>
-                <div className="text-xs text-gray-400">{user?.emailAddresses[0].emailAddress.slice(0, 20)}...</div>
+                <div className="text-sm font-medium text-white">
+                  {user?.fullName}
+                </div>
+                <div className="text-xs text-gray-400">
+                  {user?.emailAddresses[0].emailAddress.slice(0, 20)}...
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
