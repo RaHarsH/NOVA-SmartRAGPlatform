@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Brain,
   FileText,
   BarChart3,
   Globe,
@@ -13,11 +12,11 @@ import {
   User,
   Settings,
   ChevronLeft,
-  ChevronRight,
   Trash2,
   MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SignedIn, UserButton, useUser } from "@clerk/nextjs";
 
 interface ChatItem {
   id: string;
@@ -34,8 +33,8 @@ interface SidebarProps {
 export default function Sidebar({ className = "" }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeChat, setActiveChat] = useState<string | null>("chat-1");
+  const { isSignedIn, user, isLoaded } = useUser()
 
-  // Mock chat history data
   const chatHistory: ChatItem[] = [
     {
       id: "chat-1",
@@ -202,23 +201,27 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             animate={{ opacity: 1 }}
             className="flex items-center justify-center w-full"
           >
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-800 shadow-md">
+            {/* when the sidebar is collapsed logo is used for toggling */}
+            <div
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="cursor-pointer relative flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-800 shadow-md"
+            >
               <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 opacity-50 blur-sm"></div>
             </div>
           </motion.div>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
+
+        {/* When sidebar is expanded arrow left button can be used for toggling */}
+        {!isCollapsed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="cursor-pointer p-2 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+          >
             <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
+          </Button>
+        )}
       </div>
 
       {/* New Chat Features - Compact */}
@@ -237,7 +240,6 @@ export default function Sidebar({ className = "" }: SidebarProps) {
           )}
         </AnimatePresence>
 
-        {/* Compact grid layout for features */}
         <div
           className={`grid gap-2 ${
             isCollapsed ? "grid-cols-1" : "grid-cols-2"
@@ -373,8 +375,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-gray-400"
-          >
-          </motion.div>
+          ></motion.div>
         </div>
       )}
 
@@ -392,9 +393,9 @@ export default function Sidebar({ className = "" }: SidebarProps) {
           } rounded-lg hover:bg-white/10 transition-all duration-200 group`}
           title={isCollapsed ? "Profile - John Doe" : undefined}
         >
-          <div className="h-7 w-7 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 flex items-center justify-center flex-shrink-0">
-            <User className="h-3.5 w-3.5 text-black" />
-          </div>
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
           <AnimatePresence>
             {!isCollapsed && (
               <motion.div
@@ -404,8 +405,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                 transition={{ duration: 0.2 }}
                 className="flex-1 text-left"
               >
-                <div className="text-sm font-medium text-white">John Doe</div>
-                <div className="text-xs text-gray-400">john@example.com</div>
+                <div className="text-sm font-medium text-white">{user?.fullName}</div>
+                <div className="text-xs text-gray-400">{user?.emailAddresses[0].emailAddress.slice(0, 20)}...</div>
               </motion.div>
             )}
           </AnimatePresence>
