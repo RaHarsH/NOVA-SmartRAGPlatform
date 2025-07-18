@@ -37,7 +37,7 @@ export default function PdfUploader({
   onFileUpload,
   onFileRemove,
   className = "",
-  apiEndpoint = "/api/upload-pdf",
+  apiEndpoint = "http://localhost:8000/api/pdf/upload-pdf",
 }: PdfUploaderProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
