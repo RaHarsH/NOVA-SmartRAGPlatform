@@ -482,20 +482,6 @@ export default function PdfUploader({
                   </Button>
                 </div>
               )}
-
-              {/* Upload Another File Button */}
-              {uploadedFile.status === "success" && (
-                <div className="text-center">
-                  <Button
-                    onClick={openFileDialog}
-                    size="sm"
-                    className="bg-gray-600 text-white hover:bg-gray-700 h-8 text-xs"
-                  >
-                    <Upload className="mr-1 h-3 w-3" />
-                    Upload Another PDF
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </AnimatePresence>

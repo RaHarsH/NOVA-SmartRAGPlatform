@@ -17,7 +17,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           flex-1 flex items-center justify-center
         `}
       >
-        <div className="w-full max-w-4xl px-4">{children}</div>
+        <div className="w-full">{children}</div>
       </main>
     </div>
   );

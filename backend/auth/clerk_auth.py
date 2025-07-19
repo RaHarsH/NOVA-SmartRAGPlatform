@@ -16,7 +16,6 @@ async def get_current_user(user_id: str = Header(...)):
             "Content-Type": "application/json"
         }
 
-        # Fetch user directly from Clerk using user_id
         response = requests.get(
             f"https://api.clerk.com/v1/users/{user_id}",
             headers=headers
@@ -42,13 +41,13 @@ async def get_current_user(user_id: str = Header(...)):
 
         name = f"{clerk_user.get('first_name', '')} {clerk_user.get('last_name', '')}".strip()
 
-        # Check if user exists
+        # Check if the user already exists in Supabase
         existing_user = supabase.table("users").select("*").eq("email", primary_email).execute()
 
         if existing_user.data:
             return existing_user.data[0]
 
-        # Create user if not exists
+        # Create new Supabase user if there is no such user
         new_user = {
             "id": str(uuid.uuid4()),
             "email": primary_email,

@@ -38,7 +38,7 @@ async def upload_pdf(
             }
         )
 
-        # Get signed URL for private file access (valid for 7 days = 604800 seconds)
+        # Get the signed URL, this is for private file access
         signed_url_response = supabase.storage.from_(BUCKET).create_signed_url(
             supabase_path, 604800  # 7 days
         )
@@ -47,7 +47,6 @@ async def upload_pdf(
         if not signed_url:
             raise HTTPException(status_code=500, detail="Failed to generate signed URL")
 
-        # Insert file info into Supabase DB
         insert_result = supabase.table("pdf_files").insert({
             "id": str(uuid.uuid4()),
             "user_id": current_user["id"],
