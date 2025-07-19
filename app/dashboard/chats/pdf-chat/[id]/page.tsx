@@ -1,80 +1,122 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef, useCallback, useEffect } from "react"
-import { GripVertical } from "lucide-react"
-import PdfViewer from "@/components/PDFviewer"
-import ChatSection from "@/components/ChatSection"
-
+import type React from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { GripVertical } from "lucide-react";
+import PdfViewer from "@/components/PDFviewer";
+import ChatSection from "@/components/ChatSection";
+import { useParams } from "next/navigation";
+import axios from "axios";
+import { toast } from "sonner";
+import { useUser } from "@clerk/nextjs";
 
 interface Message {
-  id: string
-  type: "user" | "assistant"
-  content: string
-  timestamp: Date
-  isLoading?: boolean
+  id: string;
+  type: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  isLoading?: boolean;
 }
 
 interface PdfChatPageProps {
-  pdfUrl: string
-  fileName?: string
-  className?: string
+  className?: string;
 }
 
-export default function PdfChatPage({
-  pdfUrl = "https://kkajgncsukeerjmabxkk.supabase.co/storage/v1/object/sign/nova-pdfs/pdfs/00110f05-2284-44d8-ae5d-5dafa5bd74e7/6ed35249-c629-441c-9f73-a7b5949e8a11.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9mNTA1MmQyMy0wMTFhLTQ4NDMtYjQ3Yi1jZGI2NzVkZjVhZDQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJub3ZhLXBkZnMvcGRmcy8wMDExMGYwNS0yMjg0LTQ0ZDgtYWU1ZC01ZGFmYTViZDc0ZTcvNmVkMzUyNDktYzYyOS00NDFjLTlmNzMtYTdiNTk0OWU4YTExLnBkZiIsImlhdCI6MTc1MjkwMzcwMywiZXhwIjoxNzUzNTA4NTAzfQ.8CaPOeGIdzsMwlwdncinkuZF-aZim9RCyWAzFPR4Hw8",
-  fileName = "Python Data Science Handbook.pdf",
-  className = "",
-}: PdfChatPageProps) {
-  const [leftWidth, setLeftWidth] = useState(40)
-  const [isResizing, setIsResizing] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+export default function PdfChatPage({ className = "" }: PdfChatPageProps) {
+  const [leftWidth, setLeftWidth] = useState(40);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [fileName, setFileName] = useState("");
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { id } = useParams<{ id: string }>();
+  const { user, isLoaded } = useUser();
+
+  const fetchPdfDetails = async () => {
+    try {
+      const userId = user?.id;
+
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/pdf/${id}`,
+        {
+          headers: {
+            "user-id": userId,
+          },
+        }
+      );
+      const { public_url, filename } = response.data;
+
+      setFileName(filename);
+      setPdfUrl(public_url);
+
+      toast.success("PDF details loaded successfully!");
+    } catch (error) {
+      console.error("Error fetching PDF details:", error);
+      toast.error("Failed to load PDF details. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    if (isLoaded && user?.id && id) {
+      fetchPdfDetails();
+    }
+  }, [isLoaded, user?.id, id]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    setIsResizing(true)
-    e.preventDefault()
-  }, [])
+    setIsResizing(true);
+    e.preventDefault();
+  }, []);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!isResizing || !containerRef.current) return
+      if (!isResizing || !containerRef.current) return;
 
-      const containerRect = containerRef.current.getBoundingClientRect()
-      const newLeftWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newLeftWidth =
+        ((e.clientX - containerRect.left) / containerRect.width) * 100;
 
-      const constrainedWidth = Math.min(Math.max(newLeftWidth, 30), 70)
-      setLeftWidth(constrainedWidth)
+      const constrainedWidth = Math.min(Math.max(newLeftWidth, 30), 70);
+      setLeftWidth(constrainedWidth);
     },
-    [isResizing],
-  )
+    [isResizing]
+  );
 
   const handleMouseUp = useCallback(() => {
-    setIsResizing(false)
-  }, [])
+    setIsResizing(false);
+  }, []);
 
   useEffect(() => {
     if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove)
-      document.addEventListener("mouseup", handleMouseUp)
-      document.body.style.cursor = "col-resize"
-      document.body.style.userSelect = "none"
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
     }
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-      document.body.style.cursor = ""
-      document.body.style.userSelect = ""
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp])
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   return (
-    <div className={`h-screen w-full bg-black text-white flex overflow-hidden ${className}`}>
+    <div
+      className={`h-screen w-full bg-black text-white flex overflow-hidden ${className}`}
+    >
       <div ref={containerRef} className="flex w-full h-full">
-        {/* PDF Viewer */}
-        <div style={{ width: `${leftWidth}%` }} className="h-full">
-          <PdfViewer pdfUrl={pdfUrl} fileName={fileName} />
-        </div>
+        {pdfUrl && fileName ? (
+          <div style={{ width: `${leftWidth}%` }} className="h-full">
+            <PdfViewer pdfUrl={pdfUrl} fileName={fileName} />
+          </div>
+        ) : (
+          <div style={{ width: `${leftWidth}%` }} className="flex items-center justify-center h-full">
+            <p className="text-gray-500">PDF not yet loaded...</p>
+          </div>
+        )}
 
         {/* Resizer */}
         <div
@@ -94,5 +136,5 @@ export default function PdfChatPage({
         </div>
       </div>
     </div>
-  )
+  );
 }

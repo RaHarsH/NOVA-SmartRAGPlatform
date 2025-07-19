@@ -26,7 +26,7 @@ interface UploadedFile {
   status: "uploading" | "success" | "error";
   id: string;
   url?: string;
-  pdfId?: string; // Backend PDF ID for navigation
+  pdfId?: string; 
 }
 
 interface PdfUploaderProps {
@@ -96,9 +96,15 @@ export default function PdfUploader({
         throw new Error(data.message || "Upload failed");
       }
 
+      const pdfId = data.data.id || data.id; 
+      
+      if (!pdfId) {
+        throw new Error("PDF ID not received from server");
+      }
+
       return {
         url: data.data.url,
-        pdfId: data.data.id
+        pdfId: pdfId
       };
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -249,7 +255,6 @@ export default function PdfUploader({
       if (files && files.length > 0) {
         handleFile(files[0]);
       }
-      // Reset input value to allow re-uploading the same file
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -271,7 +276,13 @@ export default function PdfUploader({
 
   const handleStartChat = useCallback(() => {
     if (uploadedFile?.pdfId && uploadedFile.status === "success") {
-      router.push(`/chats/pdf-chat/${uploadedFile.pdfId}`);
+      console.log("Navigating to PDF chat with ID:", uploadedFile.pdfId);
+      router.push(`/dashboard/chats/pdf-chat/${uploadedFile.pdfId}`);
+    } else {
+      toast.error("Unable to start chat", {
+        description: "PDF ID not available. Please try uploading again.",
+        duration: 5000,
+      });
     }
   }, [uploadedFile, router]);
 
@@ -375,6 +386,11 @@ export default function PdfUploader({
                       Stored in cloud storage
                     </p>
                   )}
+                  {uploadedFile.pdfId && (
+                    <p className="text-xs text-green-400 mt-1">
+                      PDF ID: {uploadedFile.pdfId}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -447,7 +463,7 @@ export default function PdfUploader({
                         variant="outline"
                         size="sm"
                         onClick={() => window.open(uploadedFile.url, "_blank")}
-                        className="h-8 text-xs border-green-400/30 text-green-400 hover:bg-green-400/10"
+                        className="h-8 text-xs cursor-pointer border-green-400/30 text-green-400 hover:bg-green-400/10"
                       >
                         View File
                       </Button>
@@ -455,7 +471,8 @@ export default function PdfUploader({
                     <Button
                       onClick={handleStartChat}
                       size="sm"
-                      className="h-8 text-xs bg-blue-500 text-white hover:bg-blue-600"
+                      className="h-8 text-xs cursor-pointer bg-gradient-to-br from-blue-600 to-violet-800 text-white hover:bg-blue-600"
+                      disabled={!uploadedFile.pdfId}
                     >
                       Start Chatting
                     </Button>
