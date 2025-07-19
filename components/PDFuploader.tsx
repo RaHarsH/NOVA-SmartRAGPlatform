@@ -152,7 +152,7 @@ export default function PdfUploader({
         };
       });
 
-      toast.success("PDF uploaded successfully!", {
+      toast.success("PDF uploaded and converted to embeddings!", {
         description: `${file.name} is ready for processing`,
         duration: 5000,
         action: {

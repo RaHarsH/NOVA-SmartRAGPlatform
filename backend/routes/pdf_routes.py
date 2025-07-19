@@ -4,6 +4,8 @@ from supabase_client import supabase
 from config import SUPABASE_STORAGE_BUCKET_NAME
 import uuid
 
+from utils.embedding_processor import process_pdf_embeddings
+
 router = APIRouter()
 BUCKET = SUPABASE_STORAGE_BUCKET_NAME
 
@@ -12,10 +14,6 @@ async def upload_pdf(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Upload PDF file to Supabase storage and log it to Supabase DB.
-    Generates a signed URL for secure access.
-    """
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
@@ -24,11 +22,9 @@ async def upload_pdf(
         raise HTTPException(status_code=400, detail="File size must be under 200MB")
 
     try:
-        # Generate unique filename and path
         filename = f"{uuid.uuid4()}.pdf"
         supabase_path = f"pdfs/{current_user['id']}/{filename}"
 
-        # Upload to Supabase storage
         supabase.storage.from_(BUCKET).upload(
             supabase_path,
             contents,
@@ -38,17 +34,16 @@ async def upload_pdf(
             }
         )
 
-        # Get the signed URL, this is for private file access
         signed_url_response = supabase.storage.from_(BUCKET).create_signed_url(
             supabase_path, 604800  # 7 days
         )
-
         signed_url = signed_url_response.get("signedURL")
         if not signed_url:
             raise HTTPException(status_code=500, detail="Failed to generate signed URL")
 
+        pdf_id = str(uuid.uuid4())
         insert_result = supabase.table("pdf_files").insert({
-            "id": str(uuid.uuid4()),
+            "id": pdf_id,
             "user_id": current_user["id"],
             "filename": file.filename,
             "supabase_path": supabase_path,
@@ -56,9 +51,17 @@ async def upload_pdf(
             "public_url": signed_url,
         }).execute()
 
+        # Convert the pdf into embeddings and store it in supabase
+        await process_pdf_embeddings(
+            pdf_id=pdf_id,
+            user_id=current_user["id"],
+            signed_url=signed_url,
+            filename=file.filename
+        )
+
         return {
             "success": True,
-            "message": "PDF uploaded successfully",
+            "message": "PDF uploaded and embeddings processed successfully.",
             "data": {
                 "id": insert_result.data[0]["id"],
                 "filename": file.filename,
@@ -69,7 +72,6 @@ async def upload_pdf(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-
 
 # To get individual pdf details by its id
 @router.get("/{pdf_id}")

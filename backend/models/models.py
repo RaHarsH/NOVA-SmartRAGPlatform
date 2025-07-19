@@ -1,11 +1,12 @@
 from sqlalchemy import (
     Column, String, Integer, ForeignKey, Text, Enum,
-    DateTime, Float, func, Boolean, Index
+    DateTime, Float, func, Index
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 import enum
 import uuid
+# from pgvector.sqlalchemy import Vector
 
 Base = declarative_base()
 
@@ -67,7 +68,11 @@ class ChatSession(Base):
     user = relationship("User", back_populates="sessions")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete")
 
-    __table_args__ = (Index("idx_user_sessions", "user_id"),)
+    __table_args__ = (
+        Index("idx_doc_user", "user_id"),
+        Index("idx_doc_source", "source_id"),
+        Index("idx_doc_feature_type", "feature_type"),
+    )
 
     def __repr__(self):
         return f"<ChatSession(id={self.id}, title={self.title})>"
@@ -89,6 +94,28 @@ class ChatMessage(Base):
 
     def __repr__(self):
         return f"<ChatMessage(id={self.id}, role={self.role})>"
+    
+
+# class DocumentChunk(Base):
+#     __tablename__ = "document_chunks"
+
+#     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+#     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+#     source_id = Column(UUID(as_uuid=True), nullable=False)  # PDF ID, CSV ID, etc.
+#     feature_type = Column(Enum(FeatureTypeEnum), nullable=False)  # 'pdf', 'csv', 'web', etc.
+    
+#     chunk_text = Column(Text, nullable=False)
+#     embedding = Column(Vector(1536), nullable=True)  # 1536 for OpenAI (adjust as needed)
+#     created_at = Column(DateTime, server_default=func.now())
+
+#     __table_args__ = (
+#         Index("idx_doc_user", "user_id"),
+#         Index("idx_doc_source", "source_id"),
+#     )
+
+#     def __repr__(self):
+#         return f"<DocumentChunk(id={self.id}, source={self.source_id}, type={self.feature_type})>"
+
 
 class PdfFile(Base):
     __tablename__ = "pdf_files"
