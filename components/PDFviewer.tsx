@@ -23,10 +23,10 @@ export default function PdfViewer({
 
   return (
     <div
-      className={`h-full bg-black text-white border-r border-gray-700 flex flex-col ${className}`}
+      className={`h-full bg-black text-white border-r border-white/10 flex flex-col ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-[#0f0f0f]">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
             <FileText className="h-4 w-4 text-white" />
