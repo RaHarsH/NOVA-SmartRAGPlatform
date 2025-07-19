@@ -1,9 +1,10 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { AnimatePresence } from "framer-motion";
 import {
   FileText,
   Upload,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface UploadedFile {
   file: File;
@@ -24,24 +26,27 @@ interface UploadedFile {
   status: "uploading" | "success" | "error";
   id: string;
   url?: string;
+  pdfId?: string; // Backend PDF ID for navigation
 }
 
 interface PdfUploaderProps {
-  onFileUpload?: (file: File, url: string) => void;
+  onFileUpload?: (file: File, url: string, pdfId: string) => void;
   onFileRemove?: (fileId: string) => void;
-  className?: string;
-  apiEndpoint?: string;
 }
 
 export default function PdfUploader({
   onFileUpload,
   onFileRemove,
-  className = "",
-  apiEndpoint = "http://localhost:8000/api/pdf/upload-pdf",
 }: PdfUploaderProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  const { user } = useUser();
+
+  const userId = user?.id
+  const { getToken, isSignedIn } = useAuth();
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
@@ -57,30 +62,58 @@ export default function PdfUploader({
     if (file.type !== "application/pdf") {
       return "Please upload a PDF file only";
     }
-    if (file.size > 200 * 1024 * 1024) {
-      return "File size must be less than 200MB";
+    if (file.size > 50 * 1024 * 1024) {
+      return "File size must be less than 50MB";
     }
     return null;
   };
 
-  const uploadFileToBackend = async (file: File): Promise<string> => {
+  const uploadFileToBackend = async (file: File): Promise<{url: string, pdfId: string}> => {
+    if (!isSignedIn) {
+      throw new Error("Please sign in to upload files");
+    }
+
+    const token = await getToken();
+    if (!token) {
+      throw new Error("Authentication token not available");
+    }
+
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(apiEndpoint, {
-      method: "POST",
-      body: formData,
-    });
+    const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/pdf/upload-pdf`;
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.detail || `Upload failed: ${response.statusText}`
-      );
+    try {
+      const response = await axios.post(apiUrl, formData, {
+        headers: {
+          "user-id": userId,
+        },
+      });
+
+      const data = response.data;
+      
+      if (!data.success) {
+        throw new Error(data.message || "Upload failed");
+      }
+
+      return {
+        url: data.data.url,
+        pdfId: data.data.id
+      };
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        throw new Error("Please sign in to upload files");
+      } else if (error.response?.status === 404) {
+        throw new Error("User not found. Please contact support.");
+      }
+      
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        "Upload failed due to an unknown error";
+      throw new Error(errorMessage);
     }
-
-    const data = await response.json();
-    return data.url || data.file_url || data.public_url;
   };
 
   const simulateProgressAndUpload = async (
@@ -98,7 +131,7 @@ export default function PdfUploader({
         });
       }, 300);
 
-      const fileUrl = await uploadFileToBackend(file.file);
+      const { url: fileUrl, pdfId } = await uploadFileToBackend(file.file);
 
       clearInterval(progressInterval);
 
@@ -109,6 +142,7 @@ export default function PdfUploader({
           uploadProgress: 100,
           status: "success",
           url: fileUrl,
+          pdfId: pdfId,
         };
       });
 
@@ -121,7 +155,7 @@ export default function PdfUploader({
         },
       });
 
-      onFileUpload?.(file.file, fileUrl);
+      onFileUpload?.(file.file, fileUrl, pdfId);
     } catch (error) {
       // Clear any progress interval
       setUploadedFile((prev) => {
@@ -144,6 +178,14 @@ export default function PdfUploader({
 
   const handleFile = useCallback(
     async (file: File) => {
+      if (!isSignedIn) {
+        toast.error("Authentication required", {
+          description: "Please sign in to upload files",
+          duration: 5000,
+        });
+        return;
+      }
+
       const validationError = validateFile(file);
       if (validationError) {
         toast.error("Invalid file", {
@@ -175,7 +217,7 @@ export default function PdfUploader({
 
       await simulateProgressAndUpload(newFile);
     },
-    [uploadedFile, onFileUpload, apiEndpoint]
+    [uploadedFile, onFileUpload, isSignedIn, getToken]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -227,12 +269,43 @@ export default function PdfUploader({
     }
   }, [uploadedFile, onFileRemove]);
 
+  const handleStartChat = useCallback(() => {
+    if (uploadedFile?.pdfId && uploadedFile.status === "success") {
+      router.push(`/chats/pdf-chat/${uploadedFile.pdfId}`);
+    }
+  }, [uploadedFile, router]);
+
   const openFileDialog = () => {
+    if (!isSignedIn) {
+      toast.error("Authentication required", {
+        description: "Please sign in to upload files",
+        duration: 5000,
+      });
+      return;
+    }
     fileInputRef.current?.click();
   };
 
+  if (!isSignedIn) {
+    return (
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="text-center p-12 border-2 border-dashed border-gray-600 rounded-lg bg-gray-900/30">
+          <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-orange-600 to-red-800 flex items-center justify-center mb-6 border border-gray-500">
+            <AlertCircle className="h-8 w-8 text-white" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">
+            Sign In Required
+          </h3>
+          <p className="text-gray-400 mb-6">
+            Please sign in to upload and chat with PDF documents
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`w-full max-w-2xl mx-auto ${className}`}>
+    <div className={`w-full max-w-2xl mx-auto`}>
       <div
         className={`relative border-2 border-dashed rounded-lg p-12 transition-colors duration-200 cursor-pointer ${
           isDragOver
@@ -274,7 +347,7 @@ export default function PdfUploader({
                   <span className="text-sm text-gray-400">PDF Files</span>
                 </div>
                 <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100/10 border border-gray-700">
-                  <span className="text-sm text-gray-400">Up to 200MB</span>
+                  <span className="text-sm text-gray-400">Up to 50MB</span>
                 </div>
               </div>
 
@@ -308,7 +381,7 @@ export default function PdfUploader({
                   {uploadedFile.status === "uploading" && (
                     <div className="flex items-center space-x-2">
                       <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
-                      <span className="text-xs text-blue-400">
+                      <span className="text-xs bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-500">
                         Uploading...
                       </span>
                     </div>
@@ -344,13 +417,13 @@ export default function PdfUploader({
                     <span className="text-gray-400">
                       Uploading to cloud storage...
                     </span>
-                    <span className="text-blue-400">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-500">
                       {Math.round(uploadedFile.uploadProgress)}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div
-                      className="h-2 bg-blue-500 rounded-full transition-all duration-300"
+                      className="h-2 bg-gradient-to-r from-blue-400 to-violet-500 rounded-full transition-all duration-300"
                       style={{ width: `${uploadedFile.uploadProgress}%` }}
                     />
                   </div>
@@ -364,19 +437,29 @@ export default function PdfUploader({
                   <p className="text-sm text-green-400 font-medium mb-1">
                     PDF uploaded successfully!
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 mb-3">
                     File stored securely in cloud storage
                   </p>
-                  {uploadedFile.url && (
+                  
+                  <div className="flex justify-center space-x-2">
+                    {uploadedFile.url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(uploadedFile.url, "_blank")}
+                        className="h-8 text-xs border-green-400/30 text-green-400 hover:bg-green-400/10"
+                      >
+                        View File
+                      </Button>
+                    )}
                     <Button
-                      variant="outline"
+                      onClick={handleStartChat}
                       size="sm"
-                      onClick={() => window.open(uploadedFile.url, "_blank")}
-                      className="mt-2 h-8 text-xs border-green-400/30 text-green-400 hover:bg-green-400/10"
+                      className="h-8 text-xs bg-blue-500 text-white hover:bg-blue-600"
                     >
-                      View File
+                      Start Chatting
                     </Button>
-                  )}
+                  </div>
                 </div>
               )}
 
@@ -406,7 +489,7 @@ export default function PdfUploader({
                   <Button
                     onClick={openFileDialog}
                     size="sm"
-                    className="bg-blue-500 text-white hover:bg-blue-600 h-8 text-xs"
+                    className="bg-gray-600 text-white hover:bg-gray-700 h-8 text-xs"
                   >
                     <Upload className="mr-1 h-3 w-3" />
                     Upload Another PDF
@@ -416,18 +499,6 @@ export default function PdfUploader({
             </div>
           )}
         </AnimatePresence>
-
-        {/* Drag Overlay */}
-        {isDragOver && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-400 rounded-lg flex items-center justify-center">
-            <div className="text-center">
-              <CloudUpload className="h-12 w-12 text-blue-400 mx-auto mb-2" />
-              <p className="text-blue-400 font-medium">
-                Drop your PDF file here
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

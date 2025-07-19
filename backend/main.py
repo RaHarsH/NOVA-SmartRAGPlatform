@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from routes import pdf_upload  # import more routes as you add them
+
+from auth.clerk_auth import get_current_user
 
 app = FastAPI(
     title="RAG AI Agent Backend",
@@ -30,3 +32,7 @@ app.include_router(pdf_upload.router, prefix="/api/pdf", tags=["PDF Upload"])
 @app.get("/")
 def read_root():
     return {"message": "Backend is running 🚀"}
+
+@app.get("/api/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return current_user

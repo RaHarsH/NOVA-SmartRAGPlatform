@@ -371,7 +371,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.3);
+  background: rgba(146, 146, 146, 0.3);
   border-radius: 2px;
 }
 

@@ -38,6 +38,7 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String)
     email = Column(String, unique=True, nullable=False)
+    clerk_user_id = Column(String, unique=True, nullable=True, index=True)
     llm_model = Column(String, default="gpt-4")
     temperature = Column(Float, default=0.7)
     max_tokens = Column(Integer, default=1000)
@@ -96,10 +97,10 @@ class PdfFile(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     filename = Column(String, nullable=False)
     supabase_path = Column(String, nullable=False)
+    public_url = Column(Text, nullable=True)  
     embedding_status = Column(Enum(StatusEnum), default=StatusEnum.pending)
     uploaded_at = Column(DateTime, server_default=func.now())
 
-    # Relationships
     user = relationship("User", back_populates="pdf_files")
 
     __table_args__ = (Index("idx_pdf_user", "user_id"),)
