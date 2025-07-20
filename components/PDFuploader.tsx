@@ -26,7 +26,7 @@ interface UploadedFile {
   status: "uploading" | "success" | "error";
   id: string;
   url?: string;
-  pdfId?: string; 
+  pdfId?: string;
 }
 
 interface PdfUploaderProps {
@@ -40,12 +40,13 @@ export default function PdfUploader({
 }: PdfUploaderProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const { user } = useUser();
 
-  const userId = user?.id
+  const userId = user?.id;
   const { getToken, isSignedIn } = useAuth();
 
   const formatFileSize = (bytes: number): string => {
@@ -68,7 +69,9 @@ export default function PdfUploader({
     return null;
   };
 
-  const uploadFileToBackend = async (file: File): Promise<{url: string, pdfId: string}> => {
+  const uploadFileToBackend = async (
+    file: File
+  ): Promise<{ url: string; pdfId: string }> => {
     if (!isSignedIn) {
       throw new Error("Please sign in to upload files");
     }
@@ -91,20 +94,20 @@ export default function PdfUploader({
       });
 
       const data = response.data;
-      
+
       if (!data.success) {
         throw new Error(data.message || "Upload failed");
       }
 
-      const pdfId = data.data.id || data.id; 
-      
+      const pdfId = data.data.id || data.id;
+
       if (!pdfId) {
         throw new Error("PDF ID not received from server");
       }
 
       return {
         url: data.data.url,
-        pdfId: pdfId
+        pdfId: pdfId,
       };
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -112,12 +115,72 @@ export default function PdfUploader({
       } else if (error.response?.status === 404) {
         throw new Error("User not found. Please contact support.");
       }
-      
+
       const errorMessage =
         error.response?.data?.detail ||
         error.response?.data?.message ||
         error.message ||
         "Upload failed due to an unknown error";
+      throw new Error(errorMessage);
+    }
+  };
+
+  const createChatSession = async (
+    pdfId: string,
+    fileName: string
+  ): Promise<string> => {
+    if (!isSignedIn) {
+      throw new Error("Please sign in to create chat session");
+    }
+
+    const token = await getToken();
+    if (!token) {
+      throw new Error("Authentication token not available");
+    }
+
+    const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/chat/create-session`;
+
+    try {
+      const response = await axios.post(
+        apiUrl,
+        {
+          title: `Chat with ${fileName}`,
+          feature_type: "pdf",
+          source_id: pdfId,
+        },
+        {
+          headers: {
+            "user-id": userId,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = response.data;
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to create chat session");
+      }
+
+      const sessionId = data.data?.id || data.id;
+
+      if (!sessionId) {
+        throw new Error("Session ID not received from server");
+      }
+
+      return sessionId;
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        throw new Error("Please sign in to create chat session");
+      } else if (error.response?.status === 404) {
+        throw new Error("User not found. Please contact support.");
+      }
+
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to create chat session";
       throw new Error(errorMessage);
     }
   };
@@ -274,15 +337,52 @@ export default function PdfUploader({
     }
   }, [uploadedFile, onFileRemove]);
 
-  const handleStartChat = useCallback(() => {
-    if (uploadedFile?.pdfId && uploadedFile.status === "success") {
-      console.log("Navigating to PDF chat with ID:", uploadedFile.pdfId);
-      router.push(`/dashboard/chats/pdf-chat/${uploadedFile.pdfId}`);
-    } else {
+  const handleStartChat = useCallback(async () => {
+    if (!uploadedFile?.pdfId || uploadedFile.status !== "success") {
       toast.error("Unable to start chat", {
         description: "PDF ID not available. Please try uploading again.",
         duration: 5000,
       });
+      return;
+    }
+
+    setIsCreatingSession(true);
+
+    try {
+      // Create chat session here
+      const sessionId = await createChatSession(
+        uploadedFile.pdfId,
+        uploadedFile.name
+      );
+
+      console.log("Chat session created with ID:", sessionId);
+      console.log("Navigating to PDF chat with PDF ID:", uploadedFile.pdfId);
+
+      toast.success("Chat session created!", {
+        description: "Redirecting to your PDF chat...",
+        duration: 2000,
+      });
+
+      // Navigate to the chat page - you can choose to use sessionId or pdfId based on your routing
+      router.push(
+        `/dashboard/chats/pdf-chat/${uploadedFile.pdfId}?sessionId=${sessionId}`
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to create chat session";
+
+      toast.error("Failed to start chat", {
+        description: errorMessage,
+        duration: 5000,
+        action: {
+          label: "Retry",
+          onClick: () => handleStartChat(),
+        },
+      });
+    } finally {
+      setIsCreatingSession(false);
     }
   }, [uploadedFile, router]);
 
@@ -456,7 +556,7 @@ export default function PdfUploader({
                   <p className="text-xs text-gray-400 mb-3">
                     File stored securely in cloud storage
                   </p>
-                  
+
                   <div className="flex justify-center space-x-2">
                     {uploadedFile.url && (
                       <Button
@@ -472,9 +572,16 @@ export default function PdfUploader({
                       onClick={handleStartChat}
                       size="sm"
                       className="h-8 text-xs cursor-pointer bg-gradient-to-br from-blue-600 to-violet-800 text-white hover:bg-blue-600"
-                      disabled={!uploadedFile.pdfId}
+                      disabled={!uploadedFile.pdfId || isCreatingSession}
                     >
-                      Start Chatting
+                      {isCreatingSession ? (
+                        <div className="flex items-center space-x-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span>Creating...</span>
+                        </div>
+                      ) : (
+                        "Start Chatting"
+                      )}
                     </Button>
                   </div>
                 </div>

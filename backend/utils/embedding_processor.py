@@ -13,7 +13,11 @@ embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # Clean text to avoid UnicodeEncodeError from bad surrogate pairs
 def clean_text(text: str) -> str:
-    return text.encode("utf-8", "ignore").decode("utf-8", "ignore")
+    # Remove null bytes and other problematic characters
+    cleaned = text.replace("\x00", "")  # Remove null characters
+    cleaned = cleaned.encode("utf-8", "ignore").decode("utf-8", "ignore")  # Handle surrogate pairs
+    return cleaned
+
 
 async def process_pdf_embeddings(pdf_id: str, user_id: str, signed_url: str, filename: str):
     try:

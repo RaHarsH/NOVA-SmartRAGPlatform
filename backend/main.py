@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import pdf_routes
+from routes import pdf_routes, chat_routes
 
 from auth.clerk_auth import get_current_user
 
@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(pdf_routes.router, prefix="/api/pdf", tags=["PDF Upload"])
+app.include_router(chat_routes.router, prefix="/api/chat", tags=["Chat Sessions"])
 
 @app.get("/")
 def read_root():
