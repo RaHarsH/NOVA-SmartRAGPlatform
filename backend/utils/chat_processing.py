@@ -1,5 +1,5 @@
 from supabase_client import supabase
-from typing import Generator, AsyncGenerator
+from typing import AsyncGenerator
 import json
 import asyncio
 from langchain_openai import ChatOpenAI
@@ -113,21 +113,33 @@ async def generate_response_stream(
                 history_text += f"Human: {msg.content}\n"
             elif isinstance(msg, AIMessage):
                 history_text += f"Assistant: {msg.content}\n"
-        
-        # Create prompt template
-        prompt_template = """You are a helpful AI assistant that answers questions based on the provided context from a PDF document and previous conversation history.
+            
+        prompt_template = """You are an expert AI assistant specializing in document analysis and comprehension. Your role is to provide comprehensive, accurate, and contextually relevant answers based on PDF content and conversation history.
+                ## Instructions:
+                1. **Analyze thoroughly**: Carefully examine the provided context and identify all relevant information
+                2. **Be comprehensive**: Provide detailed explanations, include supporting details, and elaborate on key points
+                3. **Reference sources**: When possible, mention specific sections, data points, or concepts from the document
+                4. **Maintain context**: Consider the conversation history to provide cohesive, progressive responses
+                5. **Be precise**: Use exact terminology and concepts from the document when applicable
+                6. **Structure clearly**: Organize your response with clear paragraphs, bullet points, or numbered lists when appropriate
 
-Previous conversation:
-{chat_history}
+                ## Previous Conversation:
+                {chat_history}
 
-Context from PDF:
-{context}
+                ## Document Context:
+                {context}
 
-Current question: {question}
+                ## Current Question: 
+                {question}
 
-Please provide a helpful and accurate answer based on the context and conversation history. If the answer cannot be found in the context, please say so clearly.
+                ## Response Guidelines:
+                - If the information is clearly available in the context, provide a detailed answer with specific references
+                - If the information is partially available, provide what you can and clearly state what aspects need additional information
+                - If the information is not available in the context, explicitly state: "Based on the provided document, I cannot find specific information about [topic]. The document focuses on [brief summary of what the document actually covers]."
+                - Use examples, quotes, or specific data from the document when relevant
+                - For complex topics, break down your explanation into logical steps or sections
 
-Answer:"""
+            ## Detailed Answer:"""
 
         # Setup LLM with streaming callback
         callback_handler = StreamingCallbackHandler()
