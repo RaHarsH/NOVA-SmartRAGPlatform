@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { GripVertical } from "lucide-react";
 import PdfViewer from "@/components/PDFviewer";
 import ChatSection from "@/components/ChatSection";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
 import { useUser } from "@clerk/nextjs";
@@ -25,13 +25,14 @@ interface PdfChatPageProps {
 export default function PdfChatPage({ className = "" }: PdfChatPageProps) {
   const [leftWidth, setLeftWidth] = useState(40);
   const [isResizing, setIsResizing] = useState(false);
-
   const [pdfUrl, setPdfUrl] = useState("");
   const [fileName, setFileName] = useState("");
+  const [sessionId, setSessionId] = useState("");
 
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const { user, isLoaded } = useUser();
 
   const fetchPdfDetails = async () => {
@@ -50,6 +51,12 @@ export default function PdfChatPage({ className = "" }: PdfChatPageProps) {
 
       setFileName(filename);
       setPdfUrl(public_url);
+      
+      // Get session ID from URL params
+      const urlSessionId = searchParams.get('sessionId');
+      if (urlSessionId) {
+        setSessionId(urlSessionId);
+      }
 
       toast.success("PDF details loaded successfully!");
     } catch (error) {
@@ -62,7 +69,7 @@ export default function PdfChatPage({ className = "" }: PdfChatPageProps) {
     if (isLoaded && user?.id && id) {
       fetchPdfDetails();
     }
-  }, [isLoaded, user?.id, id]);
+  }, [isLoaded, user?.id, id, searchParams]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsResizing(true);
@@ -132,7 +139,11 @@ export default function PdfChatPage({ className = "" }: PdfChatPageProps) {
 
         {/* Chat Section */}
         <div style={{ width: `${100 - leftWidth}%` }} className="h-full">
-          <ChatSection fileName={fileName} />
+          <ChatSection 
+            fileName={fileName} 
+            sessionId={sessionId}
+            pdfId={id}
+          />
         </div>
       </div>
     </div>
