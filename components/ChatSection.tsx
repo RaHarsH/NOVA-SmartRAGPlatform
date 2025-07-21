@@ -5,10 +5,10 @@ import { useState, useRef, useEffect } from "react";
 import { Send, User, Bot, Loader2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useUser } from "@clerk/nextjs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
 
-// Define types for message formatting
 interface CodePart {
   type: "code";
   language: string;
@@ -39,14 +39,17 @@ interface MessageFormatterProps {
   isStreaming?: boolean;
 }
 
-// Message Formatter Component
-const MessageFormatter: React.FC<MessageFormatterProps> = ({ 
-  message, 
-  isStreaming = false 
+// Component to format the message from the AI agent
+const MessageFormatter: React.FC<MessageFormatterProps> = ({
+  message,
+  isStreaming = false,
 }) => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  const copyToClipboard = async (text: string, index: number): Promise<void> => {
+  const copyToClipboard = async (
+    text: string,
+    index: number
+  ): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedIndex(index);
@@ -101,7 +104,10 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
 
       if (line.match(/^#{1,6}\s/)) {
         if (currentSection.trim()) {
-          parts.push({ type: currentType, content: currentSection.trim() } as MessagePart);
+          parts.push({
+            type: currentType,
+            content: currentSection.trim(),
+          } as MessagePart);
           currentSection = "";
         }
         const level = (line.match(/^#{1,6}/) as RegExpMatchArray)[0].length;
@@ -113,28 +119,40 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
         currentType = "text";
       } else if (line.match(/^\d+\.\s/)) {
         if (currentSection.trim() && currentType !== "numbered-list") {
-          parts.push({ type: currentType, content: currentSection.trim() } as MessagePart);
+          parts.push({
+            type: currentType,
+            content: currentSection.trim(),
+          } as MessagePart);
           currentSection = "";
         }
         currentSection += line + "\n";
         currentType = "numbered-list";
       } else if (line.match(/^[-*•]\s/) || line.match(/^\s*[-*•]\s/)) {
         if (currentSection.trim() && currentType !== "bullet-list") {
-          parts.push({ type: currentType, content: currentSection.trim() } as MessagePart);
+          parts.push({
+            type: currentType,
+            content: currentSection.trim(),
+          } as MessagePart);
           currentSection = "";
         }
         currentSection += line + "\n";
         currentType = "bullet-list";
       } else if (line.match(/\*\*(.*?)\*\*/)) {
         if (currentSection.trim() && currentType !== "text") {
-          parts.push({ type: currentType, content: currentSection.trim() } as MessagePart);
+          parts.push({
+            type: currentType,
+            content: currentSection.trim(),
+          } as MessagePart);
           currentSection = "";
         }
         currentSection += line + "\n";
         currentType = "text";
       } else {
         if (currentType !== "text" && currentSection.trim()) {
-          parts.push({ type: currentType, content: currentSection.trim() } as MessagePart);
+          parts.push({
+            type: currentType,
+            content: currentSection.trim(),
+          } as MessagePart);
           currentSection = "";
           currentType = "text";
         }
@@ -143,13 +161,16 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
     }
 
     if (currentSection.trim()) {
-      parts.push({ type: currentType, content: currentSection.trim() } as MessagePart);
+      parts.push({
+        type: currentType,
+        content: currentSection.trim(),
+      } as MessagePart);
     }
 
     return parts;
   };
 
-  const formatBoldText = (text: string): (string | JSX.Element)[] => {
+  const formatBoldText = (text: string): (string | React.ReactNode)[] => {
     return text.split(/(\*\*.*?\*\*)/).map((part, index) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
@@ -162,13 +183,13 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
     });
   };
 
-  const formatInlineCode = (text: string): (string | JSX.Element)[] => {
+  const formatInlineCode = (text: string): (string | React.ReactNode)[] => {
     return text.split(/(`[^`]+`)/).map((part, index) => {
       if (part.startsWith("`") && part.endsWith("`")) {
         return (
           <code
             key={index}
-            className="bg-gray-700 text-blue-300 px-2 py-1 rounded text-sm font-mono"
+            className="bg-gray-200/20 text-blue-300 px-2 py-1 rounded text-sm font-mono"
           >
             {part.slice(1, -1)}
           </code>
@@ -178,12 +199,12 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
     });
   };
 
-  const renderPart = (part: MessagePart, index: number): JSX.Element => {
+  const renderPart = (part: MessagePart, index: number): React.ReactNode => {
     switch (part.type) {
       case "code":
         return (
           <div key={index} className="my-3 relative">
-            <div className="flex items-center justify-between bg-gray-900 text-gray-300 px-3 py-2 rounded-t-lg border border-gray-600">
+            <div className="flex items-center justify-between bg-gray-200/10 text-gray-300 px-3 py-2 rounded-t-lg border border-gray-600">
               <span className="text-xs font-medium">
                 {part.language || "Code"}
               </span>
@@ -199,7 +220,7 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
                 <span>{copiedIndex === index ? "Copied!" : "Copy"}</span>
               </button>
             </div>
-            <pre className="bg-gray-800 text-gray-100 p-3 rounded-b-lg overflow-x-auto border-l border-r border-b border-gray-600">
+            <pre className="bg-gray-200/10 text-gray-100 p-3 rounded-b-lg overflow-x-auto border-l border-r border-b border-gray-600">
               <code className="font-mono text-xs leading-relaxed">
                 {part.content}
               </code>
@@ -208,7 +229,13 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
         );
 
       case "header":
-        const HeaderTag = `h${Math.min(part.level + 1, 6)}` as keyof JSX.IntrinsicElements;
+        const HeaderTag = `h${Math.min(part.level + 1, 6)}` as
+          | "h1"
+          | "h2"
+          | "h3"
+          | "h4"
+          | "h5"
+          | "h6";
         const headerClasses: Record<number, string> = {
           1: "text-lg font-bold text-white mt-4 mb-3",
           2: "text-base font-bold text-white mt-4 mb-2",
@@ -218,13 +245,13 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({
           6: "text-xs font-medium text-gray-200 mt-2 mb-1",
         };
 
-        return React.createElement(
-          HeaderTag,
-          {
-            key: index,
-            className: headerClasses[part.level] || headerClasses[6],
-          },
-          part.content
+        return (
+          <HeaderTag
+            key={index}
+            className={headerClasses[part.level] || headerClasses[6]}
+          >
+            {part.content}
+          </HeaderTag>
         );
 
       case "numbered-list":
@@ -305,7 +332,6 @@ interface ChatSectionProps {
   className?: string;
 }
 
-// Define API response types
 interface ApiMessage {
   id: string;
   role: string;
@@ -321,6 +347,59 @@ interface ApiResponse {
 interface StreamChunk {
   content?: string;
 }
+
+// Chat Loading Skeleton Component
+const ChatLoadingSkeleton = () => {
+  return (
+    <div className="space-y-4">
+      {/* AI Message Skeleton */}
+      <div className="flex justify-start">
+        <div className="flex max-w-[85%] flex-row gap-x-3 items-start">
+          <Skeleton className="w-8 h-8 rounded-full bg-gray-200/10" />
+          <div className="rounded-2xl px-4 py-3 bg-gray-200/10 border border-gray-600/30">
+            <Skeleton className="h-4 w-64 mb-2 bg-gray-200/10" />
+            <Skeleton className="h-4 w-48 mb-2 bg-gray-200/10" />
+            <Skeleton className="h-4 w-32 bg-gray-200/10" />
+          </div>
+        </div>
+      </div>
+
+      {/* User Message Skeleton */}
+      <div className="flex justify-end">
+        <div className="flex max-w-[85%] flex-row-reverse gap-x-3 items-start">
+          <Skeleton className="w-8 h-8 rounded-full bg-gray-200/10" />
+          <div className="rounded-2xl px-4 py-3 bg-gray-200/10">
+            <Skeleton className="h-4 w-48 mb-2 bg-gray-200/10" />
+            <Skeleton className="h-4 w-36 bg-gray-200/10" />
+          </div>
+        </div>
+      </div>
+
+      {/* AI Message Skeleton */}
+      <div className="flex justify-start">
+        <div className="flex max-w-[85%] flex-row gap-x-3 items-start">
+          <Skeleton className="w-8 h-8 rounded-full bg-gray-200/10" />
+          <div className="rounded-2xl px-4 py-3 bg-gray-200/10 border border-gray-600/30">
+            <Skeleton className="h-4 w-72 mb-2 bg-gray-200/10" />
+            <Skeleton className="h-4 w-56 mb-2 bg-gray-200/10" />
+            <Skeleton className="h-4 w-44 mb-2 bg-gray-200/10" />
+            <Skeleton className="h-4 w-28 bg-gray-200/10" />
+          </div>
+        </div>
+      </div>
+
+      {/* User Message Skeleton */}
+      <div className="flex justify-end">
+        <div className="flex max-w-[85%] flex-row-reverse gap-x-3 items-start">
+          <Skeleton className="w-8 h-8 rounded-full bg-gray-200/10" />
+          <div className="rounded-2xl px-4 py-3 bg-gray-200/10">
+            <Skeleton className="h-4 w-40 bg-gray-200/10" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ChatSection({
   fileName,
@@ -338,7 +417,7 @@ export default function ChatSection({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const { user } = useUser();
+  const { user, isSignedIn } = useUser();
 
   const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -365,12 +444,14 @@ export default function ChatSection({
         if (response.ok) {
           const data: ApiResponse = await response.json();
           if (data.success) {
-            const loadedMessages: Message[] = data.data.map((msg: ApiMessage) => ({
-              id: msg.id,
-              type: msg.role === "user" ? "user" : "ai_agent",
-              content: msg.message,
-              timestamp: new Date(msg.timestamp),
-            }));
+            const loadedMessages: Message[] = data.data.map(
+              (msg: ApiMessage) => ({
+                id: msg.id,
+                type: msg.role === "user" ? "user" : "ai_agent",
+                content: msg.message,
+                timestamp: new Date(msg.timestamp),
+              })
+            );
 
             setMessages(loadedMessages);
           }
@@ -532,12 +613,38 @@ export default function ChatSection({
 
   if (isLoading) {
     return (
-      <div
-        className={`h-full bg-black flex items-center justify-center ${className}`}
-      >
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
-          <span className="text-gray-400">Loading conversation...</span>
+      <div className={`h-full bg-black flex flex-col ${className}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gray-900/30">
+          <div className="flex items-center space-x-3">
+            <Skeleton className="w-8 h-8 rounded-lg bg-gray-200/10" />
+            <div>
+              <Skeleton className="h-4 w-20 mb-1 bg-gray-200/10" />
+              <Skeleton className="h-3 w-32 bg-gray-200/10" />
+            </div>
+          </div>
+          <Skeleton className="h-6 w-20 rounded-full bg-gray-200/10" />
+        </div>
+
+        {/* Loading Messages */}
+        <div
+          className="flex-1 overflow-y-auto p-4"
+          style={{
+            maxHeight: "calc(100vh - 200px)",
+          }}
+        >
+          <ChatLoadingSkeleton />
+        </div>
+
+        {/* Input */}
+        <div className="p-4 border-t border-gray-600/30 bg-gray-900/20">
+          <div className="flex items-end space-x-3">
+            <div className="flex-1">
+              <Skeleton className="h-12 w-full rounded-xl bg-gray-200/10" />
+            </div>
+            <Skeleton className="h-12 w-12 rounded-xl bg-gray-200/10" />
+          </div>
+          <Skeleton className="h-4 w-64 mt-2 bg-gray-200/10" />
         </div>
       </div>
     );
@@ -586,17 +693,27 @@ export default function ChatSection({
               } items-start`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                className={`${
+                  !isSignedIn ? "w-8 h-8" : ""
+                } rounded-full flex items-center justify-center flex-shrink-0 ${
                   message.type === "user"
                     ? "bg-gradient-to-br from-blue-500 to-violet-600"
-                    : "border-gray-800/10 bg-gray-900/20 ring-1 ring-blue-500/20"
+                    : "border-gray-800/10 bg-gray-200/10 ring-1 ring-white/20"
                 }`}
               >
                 {message.type === "user" ? (
-                  <User className="h-4 w-4 text-white" />
+                  isSignedIn ? (
+                    <UserButton />
+                  ) : (
+                    <User className="h-4 w-4 text-white" />
+                  )
                 ) : (
-                  <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-800 shadow-md">
-                    <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 opacity-50 blur-sm"></div>
+                  <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-gray-500/10 shadow-md">
+                    <p className="font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-gray-500 to-white">
+                      N
+                    </p>
+                    {/* <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 opacity-50 blur-sm">
+                    </div> */}
                   </div>
                 )}
               </div>
@@ -605,7 +722,7 @@ export default function ChatSection({
                 className={`rounded-2xl px-4 py-3 max-w-full ${
                   message.type === "user"
                     ? "bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-lg"
-                    : "bg-gray-800/60 text-white border border-gray-600/30 shadow-lg backdrop-blur-sm"
+                    : "bg-gray-200/10 text-white border border-gray-600/30 shadow-lg backdrop-blur-sm"
                 }`}
               >
                 {message.isLoading ? (
@@ -664,7 +781,7 @@ export default function ChatSection({
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask a question about the PDF..."
-              className="bg-gray-800/60 border-gray-600/40 px-4 py-3 text-white placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl min-h-[48px] resize-none backdrop-blur-sm"
+              className="bg-gray-200/10 border-gray-600/30 px-4 py-3 text-white placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl min-h-[48px] resize-none backdrop-blur-sm"
               disabled={isTyping}
             />
           </div>
