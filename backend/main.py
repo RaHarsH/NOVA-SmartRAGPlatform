@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import pdf_routes, chat_routes
+from routes import pdf_routes, chat_routes, csv_routes
 
 from auth.clerk_auth import get_current_user
 
 app = FastAPI(
-    title="RAG AI Agent Backend",
+    title="NOVA-SMART-RAG AI Agent Backend",
     version="1.0.0",
     docs_url="/docs",
 )
@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(pdf_routes.router, prefix="/api/pdf", tags=["PDF Upload"])
+app.include_router(csv_routes.router, prefix='/api/csv', tags=["CSV Upload"])
 app.include_router(chat_routes.router, prefix="/api/chat", tags=["Chat Sessions"])
 
 @app.get("/")
