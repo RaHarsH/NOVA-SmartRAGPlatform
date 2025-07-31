@@ -200,7 +200,10 @@ async def get_chat_messages(
 class SendMessageRequest(BaseModel):
     session_id: str
     message: str
-    pdf_id: str
+    pdf_id: Optional[str] = None  
+    csv_id: Optional[str] = None 
+    web_id: Optional[str] = None  
+    
 
 @router.post("/send-message")
 async def send_message(
@@ -208,6 +211,8 @@ async def send_message(
     current_user: dict = Depends(get_current_user)
 ):
     try:
+        print(f"DEBUG: send_message received - session_id: {request.session_id}, pdf_id: {request.pdf_id}, csv_id: {request.csv_id}, web_id: {request.web_id}")
+        
         # Verify session belongs to user
         session_response = supabase.table("chat_sessions").select("id").eq("id", request.session_id).eq("user_id", current_user["id"]).execute()
         
@@ -235,7 +240,9 @@ async def send_message(
                 request.message, 
                 request.session_id, 
                 request.pdf_id, 
-                current_user
+                current_user,
+                csv_id=request.csv_id,
+                web_id=request.web_id
             ):
                 # Extract content from chunk
                 if chunk.startswith("data: ") and not chunk.endswith("[DONE]\n\n"):
@@ -275,6 +282,7 @@ async def send_message(
     except Exception as e:
         print(f"Debug: Exception in send_message: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{session_id}/messages")
 async def get_chat_messages(

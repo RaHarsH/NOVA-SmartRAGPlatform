@@ -2,12 +2,47 @@
 
 import type React from "react";
 import { useState, useRef, useEffect } from "react";
-import { Send, User, Bot, Loader2, Copy, Check } from "lucide-react";
+import { Send, User, Bot, Loader2, Copy, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
+
+interface SourceInfo {
+  title: string;
+  content_preview: string;
+  page: number;
+  relevance_score: number;
+}
+
+interface Message {
+  id: string;
+  type: "user" | "ai_agent";
+  content: string;
+  timestamp: Date;
+  sources?: SourceInfo[];
+  isStreaming?: boolean;
+  isLoading?: boolean;
+}
+
+interface StreamChunk {
+  content?: string;
+  sources?: SourceInfo[];
+}
+
+interface ApiMessage {
+  id: string;
+  role: string;
+  message: string;
+  timestamp: string;
+  sources?: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data: ApiMessage[];
+}
 
 interface CodePart {
   type: "code";
@@ -334,21 +369,44 @@ interface ChatSectionProps {
   className?: string;
 }
 
-interface ApiMessage {
-  id: string;
-  role: string;
-  message: string;
-  timestamp: string;
-}
-
-interface ApiResponse {
-  success: boolean;
-  data: ApiMessage[];
-}
-
 interface StreamChunk {
   content?: string;
+  sources?: SourceInfo[];
 }
+
+// Sources Display Component
+const SourcesDisplay: React.FC<{ sources: SourceInfo[] }> = ({ sources }) => {
+  if (!sources || sources.length === 0) return null;
+
+  return (
+    <div className="mt-4 p-4 bg-gray-800/20 rounded-lg border border-gray-600/20 backdrop-blur-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <ExternalLink className="h-4 w-4 text-blue-400" />
+        <span className="text-sm font-medium text-gray-300">Sources Referenced</span>
+      </div>
+      <div className="grid gap-3">
+        {sources.slice(0, 5).map((source, index) => (
+          <div 
+            key={index} 
+            className="p-3 bg-gray-700/10 rounded-md border border-gray-600/10 hover:bg-gray-700/20 transition-colors"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-200 truncate">{source.title}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                  {Math.round(source.relevance_score * 100)}% match
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">
+              {source.content_preview}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // Chat Loading Skeleton Component
 const ChatLoadingSkeleton = () => {
@@ -407,6 +465,8 @@ export default function ChatSection({
   fileName,
   sessionId,
   pdfId,
+  csvId,
+  webId,
   className = "",
 }: ChatSectionProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -421,17 +481,39 @@ export default function ChatSection({
 
   const { user, isSignedIn } = useUser();
 
-  const scrollToBottom = (): void => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // Only log when there are issues
+  if (!sessionId || sessionId === "undefined") {
+    console.log("DEBUG: ChatSection - Invalid sessionId:", sessionId, "csvId:", csvId, "pdfId:", pdfId);
+  }
+
+  // Enhanced auto-scroll function
+  const scrollToBottom = (smooth: boolean = true): void => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ 
+        behavior: smooth ? "smooth" : "auto",
+        block: "end"
+      });
+    }, 100);
   };
 
+  // Auto-scroll when messages change or when typing
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
+
+  // Auto-scroll during streaming
+  useEffect(() => {
+    if (streamingMessageId) {
+      scrollToBottom();
+    }
+  }, [streamingMessageId]);
 
   useEffect(() => {
     const loadMessages = async (): Promise<void> => {
-      if (!sessionId || !user?.id) return;
+      if (!sessionId || sessionId === "undefined" || !user?.id) {
+        console.log("DEBUG: ChatSection - Invalid sessionId or user, skipping message load:", { sessionId, userId: user?.id });
+        return;
+      }
 
       try {
         const response = await fetch(
@@ -452,6 +534,7 @@ export default function ChatSection({
                 type: msg.role === "user" ? "user" : "ai_agent",
                 content: msg.message,
                 timestamp: new Date(msg.timestamp),
+                sources: msg.sources ? JSON.parse(msg.sources) : undefined,
               })
             );
 
@@ -477,7 +560,14 @@ export default function ChatSection({
   }, [sessionId, user?.id, fileName]);
 
   const handleSendMessage = async (): Promise<void> => {
-    if (!inputMessage.trim() || !sessionId || !user?.id) return;
+    if (!inputMessage.trim() || !sessionId || sessionId === "undefined" || !user?.id) {
+      console.log("DEBUG: ChatSection - Cannot send message:", { 
+        hasMessage: !!inputMessage.trim(), 
+        sessionId, 
+        userId: user?.id 
+      });
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -517,7 +607,9 @@ export default function ChatSection({
           body: JSON.stringify({
             session_id: sessionId,
             message: currentMessage,
-            pdf_id: pdfId,
+            pdf_id: pdfId && pdfId !== "undefined" ? pdfId : undefined,
+            csv_id: csvId && csvId !== "undefined" ? csvId : undefined,
+            web_id: webId && webId !== "undefined" ? webId : undefined,
           }),
         }
       );
@@ -560,6 +652,23 @@ export default function ChatSection({
 
             try {
               const parsed: StreamChunk = JSON.parse(data);
+              
+              // Handle sources
+              if (parsed.sources) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastMessage = updated[updated.length - 1];
+                  if (lastMessage.id === assistantMessageId) {
+                    updated[updated.length - 1] = {
+                      ...lastMessage,
+                      sources: parsed.sources,
+                    };
+                  }
+                  return updated;
+                });
+              }
+              
+              // Handle content streaming
               if (parsed.content) {
                 assistantResponse += parsed.content;
                 setMessages((prev) => {
@@ -740,10 +849,15 @@ export default function ChatSection({
                   <>
                     <div className="break-words">
                       {message.type === "ai_agent" ? (
-                        <MessageFormatter
-                          message={message.content}
-                          isStreaming={message.isStreaming || false}
-                        />
+                        <>
+                          <MessageFormatter
+                            message={message.content}
+                            isStreaming={message.isStreaming || false}
+                          />
+                          {message.sources && (
+                            <SourcesDisplay sources={message.sources} />
+                          )}
+                        </>
                       ) : (
                         <div
                           className="text-sm leading-relaxed break-words whitespace-pre-wrap"
@@ -782,7 +896,7 @@ export default function ChatSection({
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask a question about the PDF..."
+              placeholder={csvId ? "Ask a question about the CSV data..." : "Ask a question about the PDF..."}
               className="bg-gray-200/10 border-gray-600/30 px-4 py-3 text-white placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl min-h-[48px] resize-none backdrop-blur-sm"
               disabled={isTyping}
             />

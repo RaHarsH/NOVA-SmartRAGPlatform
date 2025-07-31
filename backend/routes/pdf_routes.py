@@ -53,7 +53,7 @@ async def upload_pdf(
         )
 
         signed_url_response = supabase.storage.from_(BUCKET).create_signed_url(
-            supabase_path, 604800  # 7 days
+            supabase_path, 604800  # 7 days url validity
         )
         signed_url = signed_url_response.get("signedURL")
         if not signed_url:

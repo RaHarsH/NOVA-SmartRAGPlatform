@@ -15,6 +15,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 import queue
 import threading
+from utils.semantic_search import semantic_search
 
 
 class StreamingCallbackHandler(BaseCallbackHandler):
@@ -101,8 +102,6 @@ async def generate_response_stream(
         # Handle CSV
         elif csv_id:
             # Get relevant context from CSV embeddings using semantic search
-            from utils.semantic_search import semantic_search
-            
             search_results = await semantic_search(
                 query=question,
                 user_id=current_user["id"],
@@ -121,7 +120,6 @@ async def generate_response_stream(
         # Handle Web
         elif web_id:
             # Get relevant context from web embeddings using semantic search
-            from utils.semantic_search import semantic_search
             
             search_results = await semantic_search(
                 query=question,
