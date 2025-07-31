@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { AnimatePresence } from "framer-motion";
@@ -43,6 +43,13 @@ export default function CsvUploader({
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Add request tracking to prevent duplicates
+  const createSessionRequestRef = useRef<{
+    isInProgress: boolean;
+    abortController?: AbortController;
+    timestamp?: number;
+  }>({ isInProgress: false });
 
   const { user } = useUser();
 
@@ -198,12 +205,36 @@ export default function CsvUploader({
       return;
     }
 
+    // Enhanced duplicate request prevention
+    const now = Date.now();
+    const requestTracker = createSessionRequestRef.current;
+
+    // Check if request is already in progress
+    if (requestTracker.isInProgress) {
+      console.log("Session creation already in progress, ignoring duplicate request");
+      return;
+    }
+
+    // Check if a recent request was made (within 2 seconds)
+    if (requestTracker.timestamp && (now - requestTracker.timestamp) < 2000) {
+      console.log("Recent session creation request detected, ignoring duplicate");
+      toast.info("Session creation already in progress");
+      return;
+    }
+
+    // Set flags to prevent duplicate requests
+    requestTracker.isInProgress = true;
+    requestTracker.timestamp = now;
+    requestTracker.abortController = new AbortController();
+
     setIsCreatingSession(true);
 
     try {
       if (!user?.id) {
         throw new Error("User not authenticated");
       }
+
+      console.log(`Creating session for CSV ${uploadedFile.csvId} at ${new Date().toISOString()}`);
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/chat/create-session`,
@@ -217,21 +248,53 @@ export default function CsvUploader({
           headers: {
             "user-id": user.id,
           },
+          signal: requestTracker.abortController.signal,
+          // Add timeout to prevent hanging requests
+          timeout: 30000, // 30 seconds
         }
       );
 
       if (response.data.success) {
-        const sessionId = response.data.data.session_id;
+        const sessionId = response.data.data.session_id || response.data.data.id;
         toast.success("Chat session created successfully!");
         router.push(`/dashboard/chats/csv-chat/${uploadedFile.csvId}?sessionId=${sessionId}`);
       }
     } catch (error: any) {
+      // Don't show error if request was aborted (user navigated away)
+      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+        console.log("Session creation request was aborted");
+        return;
+      }
+
       console.error("Session creation error:", error);
-      toast.error("Failed to create chat session");
+      
+      let errorMessage = "Failed to create chat session";
+      if (error.response?.data?.detail) {
+        errorMessage = typeof error.response.data.detail === 'string' 
+          ? error.response.data.detail 
+          : "Server error occurred";
+      } else if (error.message && !error.message.includes('timeout')) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
+      // Reset request tracking
+      requestTracker.isInProgress = false;
+      requestTracker.abortController = undefined;
       setIsCreatingSession(false);
     }
   };
+
+  // Cleanup on unmount to abort any pending requests
+  useEffect(() => {
+    return () => {
+      const requestTracker = createSessionRequestRef.current;
+      if (requestTracker.abortController) {
+        requestTracker.abortController.abort();
+      }
+    };
+  }, []);
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
@@ -344,7 +407,7 @@ export default function CsvUploader({
                   <Button
                     onClick={createChatSession}
                     disabled={isCreatingSession}
-                    className="cursor-pointer bg-gradient-to-r from-blue-600 to-violet-800  hover:from-blue-800 hover:to-violet-800 w-full"
+                    className="cursor-pointer bg-gradient-to-r from-blue-600 to-violet-800  hover:from-blue-800 hover:to-violet-800 w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isCreatingSession ? (
                       <>

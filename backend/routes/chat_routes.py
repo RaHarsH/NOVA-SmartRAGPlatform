@@ -31,10 +31,15 @@ async def create_chat_session(
     try:
         # Validate that the source (PDF / CSV etc) belongs to the current user if source_id is provided
         if request.source_id:
-            pdf_response = supabase.table("pdf_files").select("id").eq("id", request.source_id).eq("user_id", current_user["id"]).execute()
-            if not pdf_response.data:
-                raise HTTPException(status_code=404, detail="PDF not found or you don't have permission to access it")
-
+            if request.feature_type == 'pdf':
+                pdf_response = supabase.table("pdf_files").select("id").eq("id", request.source_id).eq("user_id", current_user["id"]).execute()
+                if not pdf_response.data:
+                    raise HTTPException(status_code=404, detail="PDF not found or you don't have permission to access it")
+            elif request.feature_type == "csv":
+                csv_response = supabase.table("csv_datasets").select("id").eq("id", request.source_id).eq("user_id", current_user["id"]).execute()
+                if not csv_response.data:
+                    raise HTTPException(status_code=404, detail="CSV not found or you don't have permission to access it")
+                
         # Create new chat session
         session_id = str(uuid.uuid4())
         session_data = {

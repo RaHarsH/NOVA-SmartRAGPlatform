@@ -328,7 +328,9 @@ interface Message {
 interface ChatSectionProps {
   fileName: string;
   sessionId: string;
-  pdfId: string;
+  pdfId?: string;
+  csvId?: string;
+  webId?: string;
   className?: string;
 }
 

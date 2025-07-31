@@ -9,6 +9,24 @@ from utils.embedding_processor import process_pdf_embeddings
 router = APIRouter()
 BUCKET = SUPABASE_STORAGE_BUCKET_NAME
 
+
+# Helper function to generate a fresh signed URL for a pdf
+def generate_pdf_signed_url(file_path: str, expires_in: int = 3600):
+    """Generate a fresh signed URL for the PDF file"""
+    try:
+        response = supabase.storage.from_(BUCKET).create_signed_url(file_path, expires_in)
+        signed_url = response.get('signedURL')
+        if signed_url:
+            print(f"Debug: Generated signed URL for {file_path}")
+            return signed_url
+        else:
+            print(f"Debug: No signedURL in response for {file_path}: {response}")
+            return None
+    except Exception as e:
+        print(f"Error generating signed URL for path {file_path}: {e}")
+        return None
+
+
 @router.post("/upload-pdf")
 async def upload_pdf(
     file: UploadFile = File(...),
@@ -73,7 +91,7 @@ async def upload_pdf(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
-# To get individual pdf details by its id
+
 @router.get("/{pdf_id}")
 async def get_pdf(pdf_id: str, user_id: str = Header(None, alias="user-id")):
     try:
@@ -85,13 +103,102 @@ async def get_pdf(pdf_id: str, user_id: str = Header(None, alias="user-id")):
         
         current_user = await get_current_user(user_id)
         
-        # Fetch PDF details of the current user only
         response = supabase.table("pdf_files").select("*").eq("id", pdf_id).eq("user_id", current_user["id"]).execute()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="PDF not found or you don't have permission to access it")
         
         pdf_data = response.data[0]
+        
+        # Always generate fresh signed URL - try multiple approaches
+        file_path = None
+        
+        # Method 1: Try to get file path from supabase_path (new schema)
+        if pdf_data.get("supabase_path"):
+            file_path = pdf_data["supabase_path"]
+            print(f"Debug: Using supabase_path: {file_path}")
+            
+        # Method 2: If supabase_path is not available, try to extract from public_url (old schema)
+        elif pdf_data.get("public_url"):
+            print(f"Debug: Extracting path from public_url: {pdf_data['public_url']}")
+            try:
+                import urllib.parse
+                
+                # For Supabase signed URLs, extract the path
+                if '/object/sign/' in pdf_data["public_url"]:
+                    # Split by /object/sign/ and get the path part
+                    url_parts = pdf_data["public_url"].split('/object/sign/')
+                    if len(url_parts) > 1:
+                        # Get the path part (before query parameters)
+                        path_with_params = url_parts[1]
+                        file_path = path_with_params.split('?')[0]
+                        # URL decode the path
+                        file_path = urllib.parse.unquote(file_path)
+                        print(f"Debug: Extracted file path from signed URL: {file_path}")
+                        
+                elif '/storage/v1/object/public/' in pdf_data["public_url"]:
+                    # Handle public URLs
+                    url_parts = pdf_data["public_url"].split('/storage/v1/object/public/')
+                    if len(url_parts) > 1:
+                        path_parts = url_parts[1].split('/')
+                        if len(path_parts) > 1:
+                            # Skip bucket name and get the rest
+                            file_path = '/'.join(path_parts[1:])
+                            file_path = urllib.parse.unquote(file_path)
+                            print(f"Debug: Extracted file path from public URL: {file_path}")
+                            
+            except Exception as e:
+                print(f"Debug: Could not extract file path from public_url: {str(e)}")
+        
+        # Method 3: Fallback - try to construct path from known patterns
+        if not file_path and pdf_data.get("filename"):
+            # Try common path patterns
+            potential_paths = [
+                f"pdfs/{current_user['id']}/{pdf_data['filename']}",
+                f"pdfs/{pdf_data['filename']}",
+                f"{current_user['id']}/{pdf_data['filename']}"
+            ]
+            
+            for potential_path in potential_paths:
+                print(f"Debug: Trying potential path: {potential_path}")
+                test_url = generate_pdf_signed_url(potential_path, expires_in=60)  # Short test
+                if test_url:
+                    file_path = potential_path
+                    print(f"Debug: Found working path: {file_path}")
+                    break
+        
+        if file_path:
+            print(f"Debug: Generating signed URL for path: {file_path}")
+            fresh_signed_url = generate_pdf_signed_url(file_path, expires_in=3600)  # 1 hour
+            
+            if fresh_signed_url:
+                print(f"Debug: Successfully generated fresh signed URL")
+                
+                # Updating response data with fresh URLs
+                pdf_data["public_url"] = fresh_signed_url
+                
+                # Update database with fresh URL and ensure supabase_path is stored
+                try:
+                    update_data = {"public_url": fresh_signed_url}
+                    
+                    if not pdf_data.get("supabase_path"):
+                        update_data["supabase_path"] = file_path
+                        pdf_data["supabase_path"] = file_path 
+                    
+                    supabase.table("pdf_files").update(update_data).eq("id", pdf_id).execute()
+                    print(f"Debug: Updated database with fresh URL for PDF {pdf_id}")
+                    
+                except Exception as update_error:
+                    print(f"Debug: Failed to update database: {update_error}")
+                    
+            else:
+                print(f"Debug: Failed to generate signed URL for path: {file_path}")
+                pdf_data["public_url"] = None  
+        else:
+            print(f"Debug: No file path found for PDF {pdf_id}")
+            print(f"Debug: Available data - supabase_path: {pdf_data.get('supabase_path')}, public_url: {pdf_data.get('public_url')}, filename: {pdf_data.get('filename')}")
+            pdf_data["public_url"] = None  
+        
         return pdf_data
         
     except HTTPException:
