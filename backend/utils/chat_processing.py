@@ -180,7 +180,7 @@ async def generate_response_stream(
                 }]
             elif web_id:
                 # Get web page title from database
-                web_response = supabase.table("web_pages").select("title, url").eq("id", web_id).eq("user_id", current_user["id"]).execute()
+                web_response = supabase.table("web_scraped_pages").select("title, url").eq("id", web_id).eq("user_id", current_user["id"]).execute()
                 web_title = web_response.data[0]["title"] if web_response.data else "Web Content"
                 web_url = web_response.data[0]["url"] if web_response.data else ""
                 

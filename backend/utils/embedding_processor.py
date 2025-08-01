@@ -222,14 +222,14 @@ async def process_web_embeddings(web_id: str, user_id: str, url: str, title: str
             supabase.table("document_chunks").insert(insert_data[i:i+batch_size]).execute()
         
         # Update web page status
-        supabase.table("web_pages").update({
+        supabase.table("web_scraped_pages").update({
             "embedding_status": "completed",
         }).eq("id", web_id).execute()
         
         print(f"✅ Web embeddings completed for {web_id}")
         
     except Exception as e:
-        supabase.table("web_pages").update({
+        supabase.table("web_scraped_pages").update({
             "embedding_status": "failed",
         }).eq("id", web_id).execute()
         print(f"❌ Embedding failed for web page {web_id}: {e}")
