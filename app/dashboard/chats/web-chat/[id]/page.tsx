@@ -14,10 +14,22 @@ interface WebChatDynamicPageProps {
   className?: string;
 }
 
+
+interface WebScrapeResult {
+  id: string;
+  url: string;
+  title: string;
+  content: string;
+  meta_description?: string;
+  word_count: number;
+  embedding_status: string;
+  created_at: string;
+}
+
 export default function WebChatDynamicPage({ className = "" }: WebChatDynamicPageProps) {
   const [leftWidth, setLeftWidth] = useState(40);
   const [isResizing, setIsResizing] = useState(false);
-  const [webData, setWebData] = useState<any>(null);
+  const [webData, setWebData] = useState<WebScrapeResult | null>(null);
   const [sessionId, setSessionId] = useState("");
   const [isCreatingSession, setIsCreatingSession] = useState(false);
 
@@ -131,7 +143,7 @@ export default function WebChatDynamicPage({ className = "" }: WebChatDynamicPag
         console.log("DEBUG: Web Chat Page - Created new session:", newSessionId);
         toast.success("Chat session created!");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Session creation error:", error);
       toast.error("Failed to create chat session");
     } finally {

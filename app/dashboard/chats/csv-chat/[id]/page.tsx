@@ -140,7 +140,7 @@ export default function CsvChatPage({ className = "" }: CsvChatPageProps) {
         console.log("DEBUG: CSV Chat Page - Created new session:", newSessionId);
         toast.success("Chat session created!");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Session creation error:", error);
       toast.error("Failed to create chat session");
     } finally {
