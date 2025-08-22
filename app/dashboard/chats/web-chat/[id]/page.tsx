@@ -10,9 +10,9 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useUser } from "@clerk/nextjs";
 
-interface WebChatDynamicPageProps {
-  className?: string;
-}
+// interface WebChatDynamicPageProps {
+//   className?: string;
+// }
 
 
 interface WebScrapeResult {
@@ -26,7 +26,7 @@ interface WebScrapeResult {
   created_at: string;
 }
 
-export default function WebChatDynamicPage({ className = "" }: WebChatDynamicPageProps) {
+export default function WebChatDynamicPage() {
   const [leftWidth, setLeftWidth] = useState(40);
   const [isResizing, setIsResizing] = useState(false);
   const [webData, setWebData] = useState<WebScrapeResult | null>(null);
@@ -199,7 +199,7 @@ export default function WebChatDynamicPage({ className = "" }: WebChatDynamicPag
 
   return (
     <div
-      className={`h-screen w-full bg-black text-white flex overflow-hidden ${className}`}
+      className={`h-screen w-full bg-black text-white flex overflow-hidden`}
     >
       <div ref={containerRef} className="flex w-full h-full">
         {webData ? (
