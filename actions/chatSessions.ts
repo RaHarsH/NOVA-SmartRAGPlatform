@@ -1,7 +1,7 @@
 // server action to fetch chat sessions using userId
 export async function fetchChatSessions(userId: string, featureType?: string) {
   try {
-    const url = new URL('/api/chat/', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+    const url = new URL('/api/chat/', process.env.BACKEND_API_URL || 'http://localhost:8000');
     
     if (featureType) {
       url.searchParams.append('feature_type', featureType);
@@ -31,7 +31,7 @@ export async function fetchChatSessions(userId: string, featureType?: string) {
 // server action to fetch first message of a chat session using userId
 export async function fetchFirstMessage(sessionId: string, userId: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chat/${sessionId}/messages?limit=1`, {
+    const response = await fetch(`${process.env.BACKEND_API_URL || 'http://localhost:8000'}/api/chat/${sessionId}/messages?limit=1`, {
       method: 'GET',
       headers: {
         'user-id': userId,
