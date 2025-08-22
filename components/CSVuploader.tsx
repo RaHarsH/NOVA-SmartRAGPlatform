@@ -34,6 +34,12 @@ interface CsvUploaderProps {
   onFileRemove?: (fileId: string) => void;
 }
 
+interface ValidationError {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+}
+
 export default function CsvUploader({
   onFileUpload,
   onFileRemove,
@@ -70,7 +76,7 @@ export default function CsvUploader({
       return;
     }
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    if (!file.name.toLowerCase().endsWith(".csv")) {
       toast.error("Please upload a CSV file");
       return;
     }
@@ -137,30 +143,32 @@ export default function CsvUploader({
         onFileUpload?.(file, csvData.url, csvData.id);
         toast.success("CSV uploaded successfully!");
       }
-    } catch (error: any) {
+    } catch (error) {
+      // Catch as unknown (implicit)
       console.error("Upload error:", error);
-      setUploadedFile((prev) =>
-        prev ? { ...prev, status: "error" } : null
-      );
-      
+      setUploadedFile((prev) => (prev ? { ...prev, status: "error" } : null));
+
       let errorMessage = "Failed to upload CSV file";
-      
-      if (error.response?.data?.detail) {
+
+      // Use the type guard to check if it's an Axios error
+      if (axios.isAxiosError(error) && error.response) {
+        const detail = error.response.data.detail;
+
         // Handle string error messages
-        if (typeof error.response.data.detail === 'string') {
-          errorMessage = error.response.data.detail;
-        } else if (Array.isArray(error.response.data.detail)) {
+        if (typeof detail === "string") {
+          errorMessage = detail;
+        } else if (Array.isArray(detail)) {
           // Handle validation error arrays
-          errorMessage = error.response.data.detail.map((err: any) => 
-            typeof err === 'string' ? err : err.msg || 'Validation error'
-          ).join(', ');
+          errorMessage = detail
+            .map((err: ValidationError) => err.msg || "Validation error")
+            .join(", ");
         } else {
           errorMessage = "Invalid file format or server error";
         }
-      } else if (error.message) {
+      } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorMessage);
     }
   };
@@ -211,13 +219,17 @@ export default function CsvUploader({
 
     // Check if request is already in progress
     if (requestTracker.isInProgress) {
-      console.log("Session creation already in progress, ignoring duplicate request");
+      console.log(
+        "Session creation already in progress, ignoring duplicate request"
+      );
       return;
     }
 
     // Check if a recent request was made (within 2 seconds)
-    if (requestTracker.timestamp && (now - requestTracker.timestamp) < 2000) {
-      console.log("Recent session creation request detected, ignoring duplicate");
+    if (requestTracker.timestamp && now - requestTracker.timestamp < 2000) {
+      console.log(
+        "Recent session creation request detected, ignoring duplicate"
+      );
       toast.info("Session creation already in progress");
       return;
     }
@@ -234,7 +246,11 @@ export default function CsvUploader({
         throw new Error("User not authenticated");
       }
 
-      console.log(`Creating session for CSV ${uploadedFile.csvId} at ${new Date().toISOString()}`);
+      console.log(
+        `Creating session for CSV ${
+          uploadedFile.csvId
+        } at ${new Date().toISOString()}`
+      );
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/chat/create-session`,
@@ -255,29 +271,50 @@ export default function CsvUploader({
       );
 
       if (response.data.success) {
-        const sessionId = response.data.data.session_id || response.data.data.id;
+        const sessionId =
+          response.data.data.session_id || response.data.data.id;
         toast.success("Chat session created successfully!");
-        router.push(`/dashboard/chats/csv-chat/${uploadedFile.csvId}?sessionId=${sessionId}`);
+        router.push(
+          `/dashboard/chats/csv-chat/${uploadedFile.csvId}?sessionId=${sessionId}`
+        );
       }
-    } catch (error: any) {
-      // Don't show error if request was aborted (user navigated away)
-      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
-        console.log("Session creation request was aborted");
-        return;
+    } catch (error) {
+      // Catch as unknown
+      let errorMessage = "Failed to create chat session";
+      let shouldShowToast = true;
+
+      // First, check if it's an Axios-related error
+      if (axios.isAxiosError(error)) {
+        // Don't show an error toast if the request was intentionally aborted or cancelled
+        if (error.name === "AbortError" || error.code === "ERR_CANCELED") {
+          console.log("Session creation request was aborted");
+          shouldShowToast = false;
+        } else if (error.response?.data?.detail) {
+          // Handle detailed error messages from the backend
+          errorMessage =
+            typeof error.response.data.detail === "string"
+              ? error.response.data.detail
+              : "Server error occurred";
+        } else if (error.message && !error.message.includes("timeout")) {
+          errorMessage = error.message;
+        }
+      } else if (error instanceof Error) {
+        // Handle generic JavaScript errors
+        if (error.name === "AbortError") {
+          console.log(
+            "Session creation request was aborted by a generic error"
+          );
+          shouldShowToast = false;
+        } else {
+          errorMessage = error.message;
+        }
       }
 
       console.error("Session creation error:", error);
-      
-      let errorMessage = "Failed to create chat session";
-      if (error.response?.data?.detail) {
-        errorMessage = typeof error.response.data.detail === 'string' 
-          ? error.response.data.detail 
-          : "Server error occurred";
-      } else if (error.message && !error.message.includes('timeout')) {
-        errorMessage = error.message;
+
+      if (shouldShowToast) {
+        toast.error(errorMessage);
       }
-      
-      toast.error(errorMessage);
     } finally {
       // Reset request tracking
       requestTracker.isInProgress = false;
@@ -300,7 +337,9 @@ export default function CsvUploader({
     <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-gray-800 to-white">CSV Chat</h1>
+        <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-gray-800 to-white">
+          CSV Chat
+        </h1>
         <p className="text-gray-400">
           Upload your CSV file and chat with your data using AI
         </p>
@@ -360,7 +399,9 @@ export default function CsvUploader({
                     <FileSpreadsheet className="h-5 w-5 text-white" />
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-white">{uploadedFile.name}</p>
+                    <p className="font-medium text-white">
+                      {uploadedFile.name}
+                    </p>
                     <p className="text-sm text-gray-400">{uploadedFile.size}</p>
                   </div>
                 </div>

@@ -18,8 +18,19 @@ import { toast } from "sonner";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
+interface WebScrapeResult {
+  id: string;
+  url: string;
+  title: string;
+  content: string;
+  meta_description?: string;
+  word_count: number;
+  embedding_status: string;
+  created_at: string;
+}
+
 interface WebScraperProps {
-  onWebScraped?: (webData: any) => void;
+  onWebScraped?: (webData: WebScrapeResult) => void;
   className?: string;
 }
 
@@ -43,7 +54,7 @@ export default function WebScraper({
 
   const { user } = useUser();
   const router = useRouter();
-  
+
   // Add refs to prevent multiple API calls
   const createSessionRef = useRef(false);
   const scrapeRef = useRef(false);
@@ -154,21 +165,28 @@ export default function WebScraper({
         onWebScraped?.(webData);
         toast.success(response.data.message);
       }
-    } catch (error: any) {
+    } catch (error) {
+      // Catch as unknown
       console.error("Web scraping error:", error);
-
       let errorMessage = "Failed to scrape the URL";
 
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.response?.status === 400) {
-        errorMessage =
-          "Could not access the URL. Please check the URL and try again.";
-      } else if (error.response?.status === 500) {
-        errorMessage =
-          "Server error while processing the URL. Please try again.";
-      } else if (error.code === "NETWORK_ERROR") {
-        errorMessage = "Network error. Please check your connection.";
+      // Use the type guard to check for Axios-specific errors
+      if (axios.isAxiosError(error)) {
+        if (error.response?.data?.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response?.status === 400) {
+          errorMessage =
+            "Could not access the URL. Please check the URL and try again.";
+        } else if (error.response?.status === 500) {
+          errorMessage =
+            "Server error while processing the URL. Please try again.";
+        } else if (error.code === "ERR_NETWORK") {
+          // Note: Axios uses ERR_NETWORK
+          errorMessage = "Network error. Please check your connection.";
+        }
+      } else if (error instanceof Error) {
+        // Fallback for generic errors
+        errorMessage = error.message;
       }
 
       toast.error(errorMessage);
@@ -180,13 +198,18 @@ export default function WebScraper({
 
   const handleStartChat = async () => {
     // Prevent multiple simultaneous session creation requests
-    if (createSessionRef.current || !scrapedWeb || !user?.id || isCreatingSession) {
+    if (
+      createSessionRef.current ||
+      !scrapedWeb ||
+      !user?.id ||
+      isCreatingSession
+    ) {
       return;
     }
 
     createSessionRef.current = true;
     setIsCreatingSession(true);
-    
+
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/chat/create-session`,
@@ -210,7 +233,7 @@ export default function WebScraper({
           `/dashboard/chats/web-chat/${scrapedWeb.id}?sessionId=${sessionId}`
         );
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Session creation error:", error);
       toast.error("Failed to create chat session");
     } finally {

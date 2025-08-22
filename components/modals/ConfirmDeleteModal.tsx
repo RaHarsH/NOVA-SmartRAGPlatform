@@ -44,7 +44,7 @@ export default function ConfirmDeleteModal({
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
-          
+
           {/* Modal content */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -77,9 +77,11 @@ export default function ConfirmDeleteModal({
 
             {chatTitle && (
               <div className="bg-white/5 rounded-lg p-3 mb-6 border border-white/10">
-                <p className="text-xs text-gray-400 mb-1">Chat to be deleted:</p>
+                <p className="text-xs text-gray-400 mb-1">
+                  Chat to be deleted:
+                </p>
                 <p className="text-sm text-white font-medium truncate">
-                  "{chatTitle}"
+                  &quot;{chatTitle}&quot;
                 </p>
               </div>
             )}

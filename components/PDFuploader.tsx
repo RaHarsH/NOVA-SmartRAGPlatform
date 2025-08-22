@@ -7,7 +7,6 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { AnimatePresence } from "framer-motion";
 import {
   FileText,
-  Upload,
   X,
   CheckCircle2,
   AlertCircle,
@@ -109,19 +108,31 @@ export default function PdfUploader({
         url: data.data.url,
         pdfId: pdfId,
       };
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        throw new Error("Please sign in to upload files");
-      } else if (error.response?.status === 404) {
-        throw new Error("User not found. Please contact support.");
+    } catch (error) {
+      // Catch as unknown
+      // First, check if it's an Axios error to safely access the response
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 401) {
+          throw new Error("Please sign in to upload files");
+        } else if (error.response.status === 404) {
+          throw new Error("User not found. Please contact support.");
+        }
+
+        // Extract a more specific error message from the backend response
+        const errorMessage =
+          error.response.data?.detail ||
+          error.response.data?.message ||
+          "Upload failed due to a server error";
+        throw new Error(errorMessage);
       }
 
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.response?.data?.message ||
-        error.message ||
-        "Upload failed due to an unknown error";
-      throw new Error(errorMessage);
+      // Handle generic JavaScript errors as a fallback
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      }
+
+      // Handle any other unknown cases
+      throw new Error("Upload failed due to an unknown error");
     }
   };
 
@@ -169,19 +180,31 @@ export default function PdfUploader({
       }
 
       return sessionId;
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        throw new Error("Please sign in to create chat session");
-      } else if (error.response?.status === 404) {
-        throw new Error("User not found. Please contact support.");
+    } catch (error) {
+      // Catch as unknown
+      // First, check if it's an Axios error to safely access the response
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 401) {
+          throw new Error("Please sign in to create a chat session");
+        } else if (error.response.status === 404) {
+          throw new Error("User not found. Please contact support.");
+        }
+
+        // Extract a more specific error message from the backend response
+        const errorMessage =
+          error.response.data?.detail ||
+          error.response.data?.message ||
+          "Failed to create chat session due to a server error";
+        throw new Error(errorMessage);
       }
 
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to create chat session";
-      throw new Error(errorMessage);
+      // Handle generic JavaScript errors as a fallback
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      }
+
+      // Handle any other unknown cases
+      throw new Error("Failed to create chat session due to an unknown error");
     }
   };
 
