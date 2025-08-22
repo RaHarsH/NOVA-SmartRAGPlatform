@@ -5,15 +5,21 @@ from routes import pdf_routes, chat_routes, csv_routes, web_routes, multi_chat_r
 
 from auth.clerk_auth import get_current_user
 
+import os
+
 app = FastAPI(
     title="NOVA-SMART-RAG AI Agent Backend",
     version="1.0.0",
     docs_url="/docs",
 )
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 origins = [
     "http://localhost:3000", 
 ]
+
+if FRONTEND_URL:
+    origins.append(FRONTEND_URL)
 
 app.add_middleware(
     CORSMiddleware,
