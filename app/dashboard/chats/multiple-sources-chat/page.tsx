@@ -126,7 +126,7 @@ interface SourceOption {
 //     setIsLoadingHistory(true);
 //     try {
 //       const response = await fetch(
-//         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/multi/sessions/${sessionId}/messages`,
+//         `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000"}/api/multi/sessions/${sessionId}/messages`,
 //         {
 //           headers: {
 //             "user-id": user.id,
@@ -203,7 +203,7 @@ interface SourceOption {
 //   const fetchSources = async () => {
 //     try {
 //       const response = await fetch(
-//         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/multi/sources`,
+//         `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000"}/api/multi/sources`,
 //         {
 //           headers: {
 //             "user-id": user?.id || "",
@@ -264,7 +264,7 @@ interface SourceOption {
 
 //       // Now send the message with session storage
 //       const response = await fetch(
-//         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/multi/send-message`,
+//         `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000"}/api/multi/send-message`,
 //         {
 //           method: "POST",
 //           headers: {
@@ -325,7 +325,7 @@ interface SourceOption {
 
 //     try {
 //       const response = await fetch(
-//         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/multi/sessions`,
+//         `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000"}/api/multi/sessions`,
 //         {
 //           method: "POST",
 //           headers: {
