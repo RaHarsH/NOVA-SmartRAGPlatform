@@ -147,9 +147,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         return;
       }
 
-      console.log("BACKEND URL: ", process.env.NEXT_PUBLIC_API_URL);
+      console.log("BACKEND URL: ", process.env.NEXT_PUBLIC_BACKEND_API_URL);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chat/${chatToDelete.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:8000'}/api/chat/${chatToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'user-id': userId,
