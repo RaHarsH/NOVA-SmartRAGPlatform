@@ -25,21 +25,10 @@ if FRONTEND_URL:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],  # This allows all origins
+    allow_credentials=False,  # MUST be False when using allow_origins=["*"]
     allow_methods=["*"],
-    allow_headers=[
-        "Accept",
-        "Accept-Language",
-        "Content-Language",
-        "Content-Type",
-        "Authorization",
-        "user-id",
-        "X-Requested-With",
-        "Access-Control-Request-Method",
-        "Access-Control-Request-Headers",
-    ],
-    expose_headers=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(pdf_routes.router, prefix="/api/pdf", tags=["PDF Upload"])
