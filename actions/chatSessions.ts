@@ -3,7 +3,7 @@ export async function fetchChatSessions(userId: string, featureType?: string) {
   try {
     // console.log("BACKEND API URL for chat sessions: ", process.env.BACKEND_API_URL)
 
-    const url = new URL('/api/chat/', process.env.BACKEND_API_URL || "https://nova-smartragplatform.onrender.com/" || 'http://localhost:8000');
+    const url = new URL('/api/chat/', process.env.BACKEND_API_URL || "https://nova-smartragplatform.onrender.com" || 'http://localhost:8000');
 
     console.log("REQUESTED URL for chat sessions: ", url)
     
@@ -35,7 +35,7 @@ export async function fetchChatSessions(userId: string, featureType?: string) {
 // server action to fetch first message of a chat session using userId
 export async function fetchFirstMessage(sessionId: string, userId: string) {
   try {
-    const response = await fetch(`${process.env.BACKEND_API_URL || 'https://nova-smartragplatform.onrender.com/' || 'http://localhost:8000'}/api/chat/${sessionId}/messages?limit=1`, {
+    const response = await fetch(`${process.env.BACKEND_API_URL || 'https://nova-smartragplatform.onrender.com' || 'http://localhost:8000'}/api/chat/${sessionId}/messages?limit=1`, {
       method: 'GET',
       headers: {
         'user-id': userId,
