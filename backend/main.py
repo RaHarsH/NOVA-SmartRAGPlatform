@@ -16,7 +16,6 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 origins = [
     "http://localhost:3000", 
-    "https://nova-smart-rag-platform-xm3z.vercel.app/",
     "https://nova-smart-rag-platform-xm3z.vercel.app"
 ]
 
