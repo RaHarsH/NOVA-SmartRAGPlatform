@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import {
   Send,
   Bot,
@@ -66,7 +66,8 @@ interface SourceOption {
   label: string;
 }
 
-const MultipleSourcesChat = () => {
+// Create a separate component for the chat functionality that uses useSearchParams
+const ChatContent = () => {
   const { user } = useUser();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
@@ -468,7 +469,6 @@ const MultipleSourcesChat = () => {
                   {message.type === "assistant" && (
                     <div className="mt-4 space-y-3">
                       {/* Database Sources - Always show if available */}
-                      {/* Database Sources - Always show if available */}
                       {(() => {
                         // Use detailed sources from database if available
                         const dbSources = message.detailed_sources || [];
@@ -641,6 +641,29 @@ const MultipleSourcesChat = () => {
         </p>
       </div>
     </div>
+  );
+};
+
+// Loading fallback component
+const ChatLoadingFallback = () => {
+  return (
+    <div className="flex flex-col h-[90vh] max-w-6xl mx-auto p-6 bg-black/95 rounded-xl border border-white/10">
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-violet-400" />
+          <p className="text-gray-300">Loading chat...</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main component that wraps ChatContent in Suspense
+const MultipleSourcesChat = () => {
+  return (
+    <Suspense fallback={<ChatLoadingFallback />}>
+      <ChatContent />
+    </Suspense>
   );
 };
 
