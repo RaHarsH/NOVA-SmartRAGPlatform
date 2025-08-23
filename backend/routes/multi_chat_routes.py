@@ -1,5 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from auth.clerk_auth import get_current_user
 from utils.semantic_search import search_similar_docs, get_available_sources, check_collections_status
 from utils.llm_answer import generate_answer, is_python_question
@@ -70,6 +73,46 @@ async def semantic_search(
 
     answer = generate_answer(query, context, source=top_doc["source"])
     print(f"✅ Multi-chat Answer: {answer[:100]}...")
+
+    sources_used = list(set([doc["source"] for doc in docs]))
+
+    return {
+        "answer": answer,
+        "docs": docs,
+        "source": source,
+        "sources_used": sources_used
+    }
+
+@router.get("/test-search")
+async def test_semantic_search(
+    query: str = Query(..., description="The search query"),
+    source: str = Query("all", description="The source to search in")
+):
+    """Test semantic search without authentication"""
+    print(f"🔍 Test Multi-chat Query: {query}, Source: {source}")
+
+    if not is_python_question(query):
+        return {
+            "answer": "❌ Sorry, I only assist with Python-related queries.",
+            "docs": [],
+            "source": source,
+            "sources_used": []
+        }
+
+    docs = search_similar_docs(query, source=source, top_k=5)
+    if not docs:
+        return {
+            "answer": "No relevant information found.",
+            "docs": [],
+            "source": source,
+            "sources_used": []
+        }
+
+    context = "\n\n".join([f"Source: {doc['source']}\nTitle: {doc.get('title', 'No title')}\nContent: {doc['text']}" for doc in docs])
+    top_doc = docs[0]
+
+    answer = generate_answer(query, context, source=top_doc["source"])
+    print(f"✅ Test Multi-chat Answer: {answer[:100]}...")
 
     sources_used = list(set([doc["source"] for doc in docs]))
 

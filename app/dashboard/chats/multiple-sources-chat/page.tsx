@@ -263,6 +263,8 @@ const ChatContent = () => {
         }
       }
 
+      console.log("Requested url: ", `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000"}/api/multi/send-message`);
+
       // Now send the message with session storage
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8000"}/api/multi/send-message`,
