@@ -1,7 +1,11 @@
 // server action to fetch chat sessions using userId
 export async function fetchChatSessions(userId: string, featureType?: string) {
   try {
+    console.log("BACKEND API URL for chat sessions: ", process.env.BACKEND_API_URL)
+
     const url = new URL('/api/chat/', process.env.BACKEND_API_URL || 'http://localhost:8000');
+    
+    console.log("REQUESTED URL for chat sessions: ", url)
     
     if (featureType) {
       url.searchParams.append('feature_type', featureType);
