@@ -26,7 +26,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "Content-Type", "user-id"], # Explicitly add 'user-id'
 )
 
 app.include_router(pdf_routes.router, prefix="/api/pdf", tags=["PDF Upload"])
